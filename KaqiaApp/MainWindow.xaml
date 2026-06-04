@@ -1,73 +1,152 @@
 <Window x:Class="KaqiaApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Kaqia Overlay" 
-        WindowStyle="None" 
-        AllowsTransparency="True" 
-        Background="Transparent"
-        Topmost="True"
-        Left="0" Top="0"
-        ShowInTaskbar="False">
+        Title="Kaqia Overlay" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" Left="0" Top="0" ShowInTaskbar="False"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+    
+    <Window.Resources>
+        <Style x:Key="PanelSlider" TargetType="Slider">
+            <Setter Property="IsMoveToPointEnabled" Value="True"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="10,0"/>
+        </Style>
+        <Style x:Key="SmallLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#888"/><Setter Property="FontSize" Value="11"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Width" Value="40"/>
+        </Style>
+        <Style x:Key="ColorSwatch" TargetType="Border">
+            <Setter Property="Width" Value="20"/><Setter Property="Height" Value="20"/><Setter Property="Margin" Value="3"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Cursor" Value="Hand"/><Setter Property="BorderBrush" Value="#444"/><Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+
     <Grid x:Name="RootGrid">
-        <!-- Layer 1: The full screen screenshot -->
-        <Image x:Name="BackgroundImg" Stretch="Fill" />
+        <Image x:Name="BackgroundImg" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
         
-        <!-- Layer 2: The Dimming Mask -->
         <Path x:Name="MaskPath" Fill="#B0000000">
             <Path.Data>
                 <CombinedGeometry GeometryCombineMode="Exclude">
-                    <CombinedGeometry.Geometry1>
-                        <RectangleGeometry x:Name="FullRect" />
-                    </CombinedGeometry.Geometry1>
-                    <CombinedGeometry.Geometry2>
-                        <RectangleGeometry x:Name="SelectionRect" />
-                    </CombinedGeometry.Geometry2>
+                    <CombinedGeometry.Geometry1><RectangleGeometry x:Name="FullRect" /></CombinedGeometry.Geometry1>
+                    <CombinedGeometry.Geometry2><RectangleGeometry x:Name="SelectionRect" /></CombinedGeometry.Geometry2>
                 </CombinedGeometry>
             </Path.Data>
         </Path>
 
-        <!-- Layer 3: Interaction Canvas -->
         <Canvas x:Name="MainCanvas" Background="Transparent" MouseDown="OnMouseDown" MouseMove="OnMouseMove" MouseUp="OnMouseUp">
-            <!-- Selection Border -->
-            <Rectangle x:Name="SelectionBorder" Stroke="#00A2FF" StrokeThickness="2" Visibility="Collapsed" />
-
-            <!-- Layer 4: The Editing Window -->
+            <Rectangle x:Name="SelectionBorder" Stroke="#00A2FF" StrokeThickness="1" Visibility="Collapsed" />
+            
             <Canvas x:Name="EditCanvas" Visibility="Collapsed">
-                <Border x:Name="ImageBorder" Background="White" Padding="0">
-                    <!-- Change: Using Canvas for stickers to prevent hit-test blocking -->
-                    <Canvas x:Name="ImageContainer" Background="Transparent">
-                        <Image x:Name="CroppedImage" Stretch="None" />
-                        <!-- Stickers will be added here as Canvas children -->
-                    </Canvas>
+                <!-- Outer Shadow Layer -->
+                <Border x:Name="ShadowLayer" Background="Transparent">
+                    <!-- Background Canvas Color Layer -->
+                    <Border x:Name="CanvasLayer" Background="Transparent" Padding="0">
+                        <!-- Layered Stack to prevent gaps -->
+                        <Grid x:Name="LayeredContainer">
+                            <!-- 1. Content Clip Layer (Image sits here) -->
+                            <Border x:Name="ImageClipBorder" CornerRadius="0" Background="Transparent">
+                                <Border.OpacityMask>
+                                    <VisualBrush>
+                                        <VisualBrush.Visual>
+                                            <Border Background="Black" 
+                                                    Width="{Binding ActualWidth, ElementName=LayeredContainer}"
+                                                    Height="{Binding ActualHeight, ElementName=LayeredContainer}"
+                                                    CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}"/>
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                </Border.OpacityMask>
+                                <Canvas x:Name="ImageContainer" Background="Transparent">
+                                    <Image x:Name="CroppedImage" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                </Canvas>
+                            </Border>
+
+                            <!-- 2. STROKE OVERLAY (On top, prevents any gaps) -->
+                            <Border x:Name="StrokeLayer" BorderThickness="0" BorderBrush="White" 
+                                    CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}" 
+                                    IsHitTestVisible="False" Background="Transparent" />
+                        </Grid>
+                    </Border>
                 </Border>
             </Canvas>
         </Canvas>
 
-        <!-- Layer 5: Top-level Floating Toolbar (Moved outside to ensure hit-test) -->
         <StackPanel x:Name="Toolbar" Orientation="Horizontal" Visibility="Collapsed"
                     Background="#2C2C2C" Height="42" VerticalAlignment="Top" HorizontalAlignment="Left" Panel.ZIndex="9999">
-            <StackPanel.Resources>
-                <Style TargetType="Button">
-                    <Setter Property="Background" Value="#3A3A3A"/>
-                    <Setter Property="Foreground" Value="White"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Margin" Value="5,4"/>
-                    <Setter Property="Padding" Value="12,0"/>
-                    <Style.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#4A4A4A"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </StackPanel.Resources>
-            <Button Content="无边框" Click="OnNoBorderClick"/>
-            <Button Content="拍立得" Click="OnPolaroidClick"/>
-            <Button Content="阴影" Click="OnShadowClick"/>
+            <Button Content="外观调整" Click="OnBeautifyToggle" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
             <Separator Width="1" Background="#444" Margin="5,8"/>
-            <Button Content="加贴纸" Click="OnAddStickerClick"/>
+            <Button Content="贴纸库" Click="OnStickerPickerToggle" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
             <Separator Width="1" Background="#444" Margin="5,8"/>
-            <Button Content="完成" Click="OnFinishClick" Background="#00C853" FontWeight="Bold"/>
-            <Button Content="取消" Click="OnCancelClick"/>
+            <Button Content="完成" Click="OnFinishClick" Background="#00C853" Foreground="White" FontWeight="Bold" Margin="5,4" Padding="15,0" BorderThickness="0"/>
+            <Button Content="取消" Click="OnCancelClick" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
         </StackPanel>
+
+        <!-- BEAUTIFY POPUP -->
+        <Popup x:Name="BeautifyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
+            <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="340">
+                <StackPanel>
+                    <TextBlock Text="外观美化" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
+                    
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="圆角" Style="{StaticResource SmallLabel}"/>
+                        <Slider x:Name="RadiusSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="0" Maximum="50" ValueChanged="OnRadiusChanged"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=RadiusSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="描边" Style="{StaticResource SmallLabel}"/>
+                        <Slider x:Name="StrokeSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="0" Maximum="15" ValueChanged="OnStrokeChanged"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=StrokeSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <TextBlock Text="描边颜色" Foreground="#666" FontSize="10" Margin="45,0,0,0"/>
+                    <WrapPanel Margin="45,2,0,10">
+                        <Border Style="{StaticResource ColorSwatch}" Background="#80FFFFFF" MouseDown="OnStrokeColorSelected" Tag="#80FFFFFF"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="White" MouseDown="OnStrokeColorSelected" Tag="White"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="Black" MouseDown="OnStrokeColorSelected" Tag="Black"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#00A2FF" MouseDown="OnStrokeColorSelected" Tag="#00A2FF"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#FFD700" MouseDown="OnStrokeColorSelected" Tag="#FFD700"/>
+                    </WrapPanel>
+
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="留白" Style="{StaticResource SmallLabel}"/>
+                        <Slider x:Name="PaddingSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="0" Maximum="100" ValueChanged="OnPaddingChanged"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=PaddingSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <TextBlock Text="底座颜色" Foreground="#666" FontSize="10" Margin="45,0,0,0"/>
+                    <WrapPanel Margin="45,2,0,12">
+                        <Border Style="{StaticResource ColorSwatch}" Background="Transparent" MouseDown="OnCanvasColorSelected" Tag="Transparent"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="White" MouseDown="OnCanvasColorSelected" Tag="White"/>
+                        <Border Style="{StaticResource ColorSwatch}" MouseDown="OnCanvasColorSelected" Tag="Gradient1">
+                            <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#8E2DE2" Offset="0"/><GradientStop Color="#4A00E0" Offset="1"/></LinearGradientBrush></Border.Background>
+                        </Border>
+                    </WrapPanel>
+
+                    <CheckBox x:Name="ShadowCheck" Content="启用悬浮阴影" Foreground="White" IsChecked="True" Checked="OnShadowChanged" Unchecked="OnShadowChanged"/>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <Popup x:Name="StickerPickerPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
+            <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="10" Width="280">
+                <StackPanel>
+                    <TextBlock Text="我的贴纸" Foreground="White" FontWeight="Bold" Margin="2,0,0,10"/>
+                    <ItemsControl x:Name="StickerItemsControl">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="6">
+                                    <Border Width="54" Height="54" BorderBrush="#444" BorderThickness="1" CornerRadius="4" Background="#2C2C2C" Cursor="Hand" MouseDown="OnStickerSelected">
+                                        <Image Source="{Binding Image}" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality" />
+                                    </Border>
+                                    <Button Content="×" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0" Tag="{Binding}" Click="OnDeleteStickerFromLibrary" 
+                                            Background="#FF4444" Foreground="White" Width="18" Height="18" BorderThickness="0">
+                                        <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="9"/></Style></Button.Resources>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="+ 上传新贴纸" Background="#00A2FF" Foreground="White" Margin="0,12,0,0" Padding="0,10" Click="OnUploadStickerClick" BorderThickness="0" Cursor="Hand"/>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Window>

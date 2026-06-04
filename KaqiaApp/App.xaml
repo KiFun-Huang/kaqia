@@ -5,6 +5,8 @@
              xmlns:local="clr-namespace:KaqiaApp">
     <Application.Resources>
          <ContextMenu x:Key="TrayMenu">
+            <MenuItem Header="设置" Click="OnSettingsClick" />
+            <Separator />
             <MenuItem Header="退出" Click="OnExitClick" />
         </ContextMenu>
     </Application.Resources>

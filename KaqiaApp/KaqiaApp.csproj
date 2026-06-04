@@ -4,18 +4,20 @@
     <ProjectReference Include="..\KaqiaCore\KaqiaCore.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Resource Include="cat_logo.png" />
-    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.8" />
-  </ItemGroup>
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="cat_logo.png" />
+    <Resource Include="favicon.ico" />
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.8" />
+  </ItemGroup>
 
 </Project>
