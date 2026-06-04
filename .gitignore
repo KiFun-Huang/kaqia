@@ -1,0 +1,26 @@
+# .NET artifacts
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio files
+.vs/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet Packages
+*.nupkg
+packages/
+
+# Wails artifacts (from previous attempt)
+build/bin/
+frontend/dist/
+frontend/node_modules/

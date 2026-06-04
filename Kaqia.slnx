@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="KaqiaApp/KaqiaApp.csproj" />
+  <Project Path="KaqiaCore/KaqiaCore.csproj" />
+</Solution>
