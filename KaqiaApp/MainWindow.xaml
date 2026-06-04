@@ -6,6 +6,17 @@
         UseLayoutRounding="True" SnapsToDevicePixels="True">
     
     <Window.Resources>
+        <Style x:Key="CircleDeleteButton" TargetType="Button">
+            <Setter Property="Background" Value="#FF4444"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="Width" Value="18"/><Setter Property="Height" Value="18"/><Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid><Ellipse Fill="{TemplateBinding Background}"/><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/></Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="PanelSlider" TargetType="Slider">
             <Setter Property="IsMoveToPointEnabled" Value="True"/><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="10,0"/>
         </Style>
@@ -15,11 +26,26 @@
         <Style x:Key="ColorSwatch" TargetType="Border">
             <Setter Property="Width" Value="20"/><Setter Property="Height" Value="20"/><Setter Property="Margin" Value="3"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Cursor" Value="Hand"/><Setter Property="BorderBrush" Value="#444"/><Setter Property="BorderThickness" Value="1"/>
         </Style>
+        <Style x:Key="ToolButton" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="White"/><Setter Property="Width" Value="34"/><Setter Property="Height" Value="34"/><Setter Property="Margin" Value="2,4"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="BtnBorder" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="BtnBorder" Property="Background" Value="#00A2FF"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="BtnBorder" Property="Background" Value="#444"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
         <Image x:Name="BackgroundImg" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
-        
         <Path x:Name="MaskPath" Fill="#B0000000">
             <Path.Data>
                 <CombinedGeometry GeometryCombineMode="Exclude">
@@ -31,46 +57,44 @@
 
         <Canvas x:Name="MainCanvas" Background="Transparent" MouseDown="OnMouseDown" MouseMove="OnMouseMove" MouseUp="OnMouseUp">
             <Rectangle x:Name="SelectionBorder" Stroke="#00A2FF" StrokeThickness="1" Visibility="Collapsed" />
-            
             <Canvas x:Name="EditCanvas" Visibility="Collapsed">
-                <!-- Outer Shadow Layer -->
                 <Border x:Name="ShadowLayer" Background="Transparent">
-                    <!-- Background Canvas Color Layer -->
                     <Border x:Name="CanvasLayer" Background="Transparent" Padding="0">
-                        <!-- Layered Stack to prevent gaps -->
                         <Grid x:Name="LayeredContainer">
-                            <!-- 1. Content Clip Layer (Image sits here) -->
                             <Border x:Name="ImageClipBorder" CornerRadius="0" Background="Transparent">
                                 <Border.OpacityMask>
                                     <VisualBrush>
                                         <VisualBrush.Visual>
-                                            <Border Background="Black" 
-                                                    Width="{Binding ActualWidth, ElementName=LayeredContainer}"
-                                                    Height="{Binding ActualHeight, ElementName=LayeredContainer}"
-                                                    CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}"/>
+                                            <Border Background="Black" Width="{Binding ActualWidth, ElementName=LayeredContainer}" Height="{Binding ActualHeight, ElementName=LayeredContainer}" CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}"/>
                                         </VisualBrush.Visual>
                                     </VisualBrush>
                                 </Border.OpacityMask>
                                 <Canvas x:Name="ImageContainer" Background="Transparent">
                                     <Image x:Name="CroppedImage" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <Canvas x:Name="AnnotationCanvas" Background="Transparent" />
                                 </Canvas>
                             </Border>
-
-                            <!-- 2. STROKE OVERLAY (On top, prevents any gaps) -->
-                            <Border x:Name="StrokeLayer" BorderThickness="0" BorderBrush="White" 
-                                    CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}" 
-                                    IsHitTestVisible="False" Background="Transparent" />
+                            <Border x:Name="StrokeLayer" BorderThickness="0" BorderBrush="White" CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}" IsHitTestVisible="False" Background="Transparent" />
                         </Grid>
                     </Border>
                 </Border>
             </Canvas>
         </Canvas>
 
+        <!-- TOOLBAR -->
         <StackPanel x:Name="Toolbar" Orientation="Horizontal" Visibility="Collapsed"
                     Background="#2C2C2C" Height="42" VerticalAlignment="Top" HorizontalAlignment="Left" Panel.ZIndex="9999">
-            <Button Content="外观调整" Click="OnBeautifyToggle" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
+            <StackPanel Orientation="Horizontal" Margin="5,0">
+                <RadioButton x:Name="SelectToolBtn" Content="↖" Style="{StaticResource ToolButton}" IsChecked="True" Tag="Select" Checked="OnToolSelected" ToolTip="选择 (S)"/>
+                <RadioButton Content="□" Style="{StaticResource ToolButton}" Tag="Rectangle" Checked="OnToolSelected" ToolTip="矩形 (R)"/>
+                <RadioButton Content="◯" Style="{StaticResource ToolButton}" Tag="Ellipse" Checked="OnToolSelected" ToolTip="椭圆 (E)"/>
+                <RadioButton Content="➔" Style="{StaticResource ToolButton}" Tag="Arrow" Checked="OnToolSelected" ToolTip="箭头 (A)"/>
+                <RadioButton Content="✎" Style="{StaticResource ToolButton}" Tag="Pen" Checked="OnToolSelected" ToolTip="画笔 (P)"/>
+                <RadioButton Content="T" Style="{StaticResource ToolButton}" Tag="Text" Checked="OnToolSelected" ToolTip="文字 (T)"/>
+            </StackPanel>
             <Separator Width="1" Background="#444" Margin="5,8"/>
-            <Button Content="贴纸库" Click="OnStickerPickerToggle" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
+            <Button Content="外观" Click="OnBeautifyToggle" Background="#3A3A3A" Foreground="White" Margin="2,4" Padding="8,0" BorderThickness="0"/>
+            <Button Content="贴纸" Click="OnStickerPickerToggle" Background="#3A3A3A" Foreground="White" Margin="2,4" Padding="8,0" BorderThickness="0"/>
             <Separator Width="1" Background="#444" Margin="5,8"/>
             <Button Content="完成" Click="OnFinishClick" Background="#00C853" Foreground="White" FontWeight="Bold" Margin="5,4" Padding="15,0" BorderThickness="0"/>
             <Button Content="取消" Click="OnCancelClick" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
@@ -81,14 +105,12 @@
             <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="340">
                 <StackPanel>
                     <TextBlock Text="外观美化" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
-                    
                     <Grid Margin="0,3">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
                         <TextBlock Text="圆角" Style="{StaticResource SmallLabel}"/>
                         <Slider x:Name="RadiusSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="0" Maximum="50" ValueChanged="OnRadiusChanged"/>
                         <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=RadiusSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
                     </Grid>
-
                     <Grid Margin="0,3">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
                         <TextBlock Text="描边" Style="{StaticResource SmallLabel}"/>
@@ -100,10 +122,8 @@
                         <Border Style="{StaticResource ColorSwatch}" Background="#80FFFFFF" MouseDown="OnStrokeColorSelected" Tag="#80FFFFFF"/>
                         <Border Style="{StaticResource ColorSwatch}" Background="White" MouseDown="OnStrokeColorSelected" Tag="White"/>
                         <Border Style="{StaticResource ColorSwatch}" Background="Black" MouseDown="OnStrokeColorSelected" Tag="Black"/>
-                        <Border Style="{StaticResource ColorSwatch}" Background="#00A2FF" MouseDown="OnStrokeColorSelected" Tag="#00A2FF"/>
-                        <Border Style="{StaticResource ColorSwatch}" Background="#FFD700" MouseDown="OnStrokeColorSelected" Tag="#FFD700"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#FF5555" MouseDown="OnStrokeColorSelected" Tag="#FF5555"/>
                     </WrapPanel>
-
                     <Grid Margin="0,3">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
                         <TextBlock Text="留白" Style="{StaticResource SmallLabel}"/>
@@ -118,12 +138,36 @@
                             <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#8E2DE2" Offset="0"/><GradientStop Color="#4A00E0" Offset="1"/></LinearGradientBrush></Border.Background>
                         </Border>
                     </WrapPanel>
-
                     <CheckBox x:Name="ShadowCheck" Content="启用悬浮阴影" Foreground="White" IsChecked="True" Checked="OnShadowChanged" Unchecked="OnShadowChanged"/>
                 </StackPanel>
             </Border>
         </Popup>
 
+        <!-- TOOL PROPERTY POPUP -->
+        <Popup x:Name="ToolPropertyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
+            <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="280">
+                <StackPanel>
+                    <TextBlock x:Name="ToolPropertyTitle" Text="工具选项" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="粗细" Style="{StaticResource SmallLabel}"/>
+                        <Slider x:Name="ToolThicknessSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="1" Maximum="15" Value="3" ValueChanged="OnToolParamChanged"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=ToolThicknessSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <TextBlock Text="颜色" Foreground="#666" FontSize="10" Margin="45,5,0,0"/>
+                    <WrapPanel Margin="45,2,0,5">
+                        <Border Style="{StaticResource ColorSwatch}" Background="#FF5555" MouseDown="OnToolColorSelected" Tag="#FF5555"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#00C853" MouseDown="OnToolColorSelected" Tag="#00C853"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#00A2FF" MouseDown="OnToolColorSelected" Tag="#00A2FF"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#FFD700" MouseDown="OnToolColorSelected" Tag="#FFD700"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="White" MouseDown="OnToolColorSelected" Tag="White"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="Black" MouseDown="OnToolColorSelected" Tag="Black"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- STICKER POPUP -->
         <Popup x:Name="StickerPickerPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
             <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="10" Width="280">
                 <StackPanel>

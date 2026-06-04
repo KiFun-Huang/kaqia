@@ -17,6 +17,12 @@ namespace KaqiaApp
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Global Exception Handling
+            AppDomain.CurrentDomain.UnhandledException += (s, args) => 
+                ShowFatalError(args.ExceptionObject as Exception);
+            DispatcherUnhandledException += (s, args) => 
+                { ShowFatalError(args.Exception); args.Handled = true; };
+
             const string appName = "KaqiaScreenshotTool_Mutex";
             bool createdNew;
 
@@ -30,14 +36,22 @@ namespace KaqiaApp
 
             base.OnStartup(e);
 
-            _config = ConfigManager.Load();
+            try {
+                _config = ConfigManager.Load();
+            } catch {
+                _config = new AppConfig();
+            }
 
             // Create tray icon
             _notifyIcon = new TaskbarIcon();
-            var iconUri = new Uri("pack://application:,,,/favicon.ico");
-            var iconStream = Application.GetResourceStream(iconUri)?.Stream;
-            if (iconStream != null) _notifyIcon.Icon = new System.Drawing.Icon(iconStream);
-            else _notifyIcon.Icon = System.Drawing.SystemIcons.Information;
+            try {
+                var iconUri = new Uri("pack://application:,,,/favicon.ico");
+                var iconStream = Application.GetResourceStream(iconUri)?.Stream;
+                if (iconStream != null) _notifyIcon.Icon = new System.Drawing.Icon(iconStream);
+                else _notifyIcon.Icon = System.Drawing.SystemIcons.Information;
+            } catch {
+                _notifyIcon.Icon = System.Drawing.SystemIcons.Information;
+            }
 
             _notifyIcon.ToolTipText = "Kaqia 截图工具";
             _notifyIcon.ContextMenu = (System.Windows.Controls.ContextMenu)FindResource("TrayMenu");
@@ -51,11 +65,16 @@ namespace KaqiaApp
             RegisterGlobalHotkey();
         }
 
+        private void ShowFatalError(Exception? ex)
+        {
+            string msg = ex?.ToString() ?? "未知错误";
+            MessageBox.Show($"Kaqia 发生了严重错误并需要关闭:\n\n{msg}", "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Environment.Exit(1);
+        }
+
         private void RegisterGlobalHotkey()
         {
             if (_hwndSource == null) return;
-            
-            // Unregister first
             HotkeyManager.Unregister(_hwndSource.Handle, HOTKEY_ID);
 
             if (string.IsNullOrEmpty(_config.HotkeyKey)) return;
@@ -68,7 +87,6 @@ namespace KaqiaApp
 
             try
             {
-                // Convert string Key to Virtual Key code
                 Key key = (Key)Enum.Parse(typeof(Key), _config.HotkeyKey);
                 uint vKey = (uint)KeyInterop.VirtualKeyFromKey(key);
                 HotkeyManager.Register(_hwndSource.Handle, HOTKEY_ID, modifiers, vKey);
@@ -92,19 +110,27 @@ namespace KaqiaApp
 
         private void OnHotkeyTriggered()
         {
-            var screenshot = ScreenCapturer.CaptureAllScreens(out int pixelWidth, out int pixelHeight);
-            var overlay = new MainWindow(screenshot, pixelWidth, pixelHeight);
-            overlay.Show();
-            overlay.Activate();
+            try {
+                var screenshot = ScreenCapturer.CaptureAllScreens(out int pixelWidth, out int pixelHeight);
+                var overlay = new MainWindow(screenshot, pixelWidth, pixelHeight);
+                overlay.Show();
+                overlay.Activate();
+            } catch (Exception ex) {
+                MessageBox.Show("截图启动失败: " + ex.Message);
+            }
         }
 
         private void OnSettingsClick(object sender, RoutedEventArgs e)
         {
-            var win = new SettingsWindow();
-            if (win.ShowDialog() == true)
-            {
-                _config = ConfigManager.Load(); // Reload
-                RegisterGlobalHotkey();
+            try {
+                var win = new SettingsWindow();
+                if (win.ShowDialog() == true)
+                {
+                    _config = ConfigManager.Load(); 
+                    RegisterGlobalHotkey();
+                }
+            } catch (Exception ex) {
+                MessageBox.Show("打开设置失败: " + ex.Message);
             }
         }
 

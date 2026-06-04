@@ -1,0 +1,84 @@
+<UserControl x:Class="KaqiaApp.KaqiaObjectControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="150" Height="100"
+             Background="Transparent"
+             RenderTransformOrigin="0.5,0.5"
+             Focusable="True">
+    
+    <UserControl.Resources>
+        <Style x:Key="ResizeHandleStyle" TargetType="Ellipse">
+            <Setter Property="Fill" Value="White"/>
+            <Setter Property="Stroke" Value="#00A2FF"/>
+            <Setter Property="StrokeThickness" Value="1"/>
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="10"/>
+            <EventSetter Event="MouseDown" Handler="OnResizeHandleMouseDown"/>
+        </Style>
+        <Style x:Key="EdgeTriggerStyle" TargetType="Rectangle">
+            <Setter Property="Fill" Value="Transparent"/>
+            <EventSetter Event="MouseDown" Handler="OnResizeHandleMouseDown"/>
+        </Style>
+    </UserControl.Resources>
+    
+    <UserControl.RenderTransform>
+        <TransformGroup>
+            <RotateTransform x:Name="ObjectRotate" />
+            <TranslateTransform x:Name="ObjectTranslate" />
+        </TransformGroup>
+    </UserControl.RenderTransform>
+    
+    <Grid x:Name="MainGrid">
+        <!-- The Content (Image, Shape, or Text) -->
+        <ContentControl x:Name="ObjectContent" MouseDown="OnContentMouseDown" 
+                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" 
+                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+
+        <!-- Interaction Overlay -->
+        <Grid x:Name="ControlCanvas" Visibility="Collapsed">
+            <!-- 3x3 Grid to perfectly center handles and edges -->
+            <Grid.RowDefinitions>
+                <RowDefinition Height="0"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="0"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="0"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Dash Border -->
+            <Rectangle Grid.RowSpan="3" Grid.ColumnSpan="3" Stroke="#00A2FF" StrokeDashArray="3 3" StrokeThickness="1" IsHitTestVisible="False"/>
+            
+            <!-- Edges -->
+            <Rectangle Grid.Column="0" Grid.Row="1" Width="8" Margin="-4,0,0,0" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Left"/>
+            <Rectangle Grid.Column="2" Grid.Row="1" Width="8" Margin="0,0,-4,0" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Right"/>
+            <Rectangle Grid.Column="1" Grid.Row="0" Height="8" Margin="0,-4,0,0" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Top"/>
+            <Rectangle Grid.Column="1" Grid.Row="2" Height="8" Margin="0,0,0,-4" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Bottom"/>
+
+            <!-- Corners -->
+            <Ellipse Grid.Column="0" Grid.Row="0" Margin="-5,-5,0,0" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="TopLeft"/>
+            <Ellipse Grid.Column="2" Grid.Row="0" Margin="0,-5,-5,0" Cursor="SizeNESW" Style="{StaticResource ResizeHandleStyle}" Tag="TopRight"/>
+            <Ellipse Grid.Column="0" Grid.Row="2" Margin="-5,0,0,-5" Cursor="SizeNESW" Style="{StaticResource ResizeHandleStyle}" Tag="BottomLeft"/>
+            <Ellipse Grid.Column="2" Grid.Row="2" Margin="0,0,-5,-5" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="BottomRight"/>
+
+            <!-- Action Buttons Layer (Using a Canvas inside the Grid for absolute positioning relative to bottom) -->
+            <Canvas Grid.Row="2" Grid.Column="1" IsHitTestVisible="True">
+                <!-- Rotate -->
+                <Ellipse x:Name="RotateHandle" Fill="White" Stroke="#FFC107" StrokeThickness="1"
+                         Width="12" Height="12" Canvas.Top="20" Canvas.Left="-6" Cursor="Hand" MouseDown="OnRotateMouseDown" />
+                
+                <!-- Delete (Top Right corner of the whole object) -->
+                <!-- We need to reach out to the top-right, so we use negative offsets from our bottom-center cell? 
+                     Better to just put it in the Grid.Column=2 Row=0 -->
+            </Canvas>
+
+            <Button x:Name="DeleteButton" Grid.Column="2" Grid.Row="0" Content="×" Background="#FF4444" Foreground="White"
+                    FontSize="10" Width="18" Height="18" Margin="0,-12,-12,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Click="OnDeleteClick" BorderThickness="0">
+                <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="9"/></Style></Button.Resources>
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>
