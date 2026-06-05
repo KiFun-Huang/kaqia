@@ -44,21 +44,15 @@ namespace KaqiaApp
                 
                 _scaleX = (double)pixelWidth / SystemParameters.VirtualScreenWidth;
                 _scaleY = (double)pixelHeight / SystemParameters.VirtualScreenHeight;
-                
-                Left = SystemParameters.VirtualScreenLeft; 
-                Top = SystemParameters.VirtualScreenTop; 
-                Width = SystemParameters.VirtualScreenWidth; 
-                Height = SystemParameters.VirtualScreenHeight;
+                Left = SystemParameters.VirtualScreenLeft; Top = SystemParameters.VirtualScreenTop; 
+                Width = SystemParameters.VirtualScreenWidth; Height = SystemParameters.VirtualScreenHeight;
                 
                 FullRect.Rect = new Rect(0, 0, Width, Height);
-                BackgroundImg.Source = screenshot; 
-                BackgroundImg.Width = Width; 
-                BackgroundImg.Height = Height;
+                BackgroundImg.Source = screenshot; BackgroundImg.Width = Width; BackgroundImg.Height = Height;
                 
                 LoadStickers(); 
                 StickerItemsControl.ItemsSource = StickerLibrary;
 
-                // Mark as initialized BEFORE applying config to allow event handlers to run
                 _isInitialized = true;
                 ApplyConfigToUI();
 
@@ -78,26 +72,23 @@ namespace KaqiaApp
         private void ApplyConfigToUI()
         {
             if (!_isInitialized) return;
-
-            // Beautify Sliders - This will trigger ValueChanged events
             RadiusSlider.Value = _config.Radius;
             StrokeSlider.Value = _config.StrokeThickness;
             PaddingSlider.Value = _config.Padding;
             ShadowCheck.IsChecked = _config.ShadowEnabled;
-
-            // Colors
             try {
                 if (!string.IsNullOrEmpty(_config.StrokeColor))
                     StrokeLayer.BorderBrush = (Brush)new BrushConverter().ConvertFromString(_config.StrokeColor);
-                if (!string.IsNullOrEmpty(_config.CanvasColor))
+                if (!string.IsNullOrEmpty(_config.CanvasColor)) {
                     CanvasLayer.Background = (Brush)new BrushConverter().ConvertFromString(_config.CanvasColor);
+                    CanvasHexInput.Text = _config.CanvasColor;
+                }
             } catch { }
         }
 
         private void SaveCurrentConfig()
         {
             if (!_isInitialized || _config == null) return;
-
             _config.Radius = RadiusSlider.Value;
             _config.StrokeThickness = StrokeSlider.Value;
             _config.Padding = PaddingSlider.Value;
@@ -175,35 +166,51 @@ namespace KaqiaApp
             ToolPropertyTitle.Text = mode.ToString() + " 属性";
             
             if (_config.Tools.TryGetValue(mode.ToString(), out var state)) {
-                if (target != null) ToolThicknessSlider.Value = target.ObjectThickness;
-                else ToolThicknessSlider.Value = state.Thickness;
+                if (target != null) {
+                    ToolThicknessSlider.Value = target.ObjectThickness;
+                    ToolHexInput.Text = target.ObjectBrush.ToString();
+                } else {
+                    ToolThicknessSlider.Value = state.Thickness;
+                    ToolHexInput.Text = state.Color;
+                }
             }
-
             ToolPropertyPopup.IsOpen = true;
         }
 
         private void OnToolParamChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
             if (!_isInitialized) return;
-            if (_selectedObject != null) {
-                _selectedObject.ObjectThickness = e.NewValue;
-            } else if (_currentMode != DrawingMode.Select) {
-                if (_config.Tools.ContainsKey(_currentMode.ToString())) {
-                    _config.Tools[_currentMode.ToString()].Thickness = e.NewValue;
-                    SaveCurrentConfig();
-                }
-            }
+            if (_selectedObject != null) _selectedObject.ObjectThickness = e.NewValue;
+            else if (_currentMode != DrawingMode.Select) { _config.Tools[_currentMode.ToString()].Thickness = e.NewValue; SaveCurrentConfig(); }
         }
 
         private void OnToolColorSelected(object sender, MouseButtonEventArgs e) {
             if (sender is Border b && b.Background != null) {
-                if (_selectedObject != null) {
-                    _selectedObject.ObjectBrush = b.Background;
-                } else if (_currentMode != DrawingMode.Select) {
-                    if (_config.Tools.ContainsKey(_currentMode.ToString())) {
-                        _config.Tools[_currentMode.ToString()].Color = b.Background.ToString();
-                        SaveCurrentConfig();
-                    }
-                }
+                ApplyToolColor(b.Background);
+                ToolHexInput.Text = b.Background.ToString();
+            }
+        }
+
+        private void OnToolHexKeyDown(object sender, KeyEventArgs e) {
+            if (e.Key == Key.Enter) {
+                try {
+                    var brush = (Brush)new BrushConverter().ConvertFromString(ToolHexInput.Text);
+                    ApplyToolColor(brush);
+                } catch { }
+            }
+        }
+
+        private void ApplyToolColor(Brush brush) {
+            if (_selectedObject != null) _selectedObject.ObjectBrush = brush;
+            else if (_currentMode != DrawingMode.Select) { _config.Tools[_currentMode.ToString()].Color = brush.ToString(); SaveCurrentConfig(); }
+        }
+
+        private void OnCanvasHexKeyDown(object sender, KeyEventArgs e) {
+            if (e.Key == Key.Enter) {
+                try {
+                    var brush = (Brush)new BrushConverter().ConvertFromString(CanvasHexInput.Text);
+                    CanvasLayer.Background = brush;
+                    SaveCurrentConfig();
+                } catch { }
             }
         }
 
@@ -215,7 +222,6 @@ namespace KaqiaApp
 
             Point p = e.GetPosition(AnnotationCanvas); _startPoint = p;
             if (!_config.Tools.TryGetValue(_currentMode.ToString(), out var state)) return;
-            
             Brush brush = (Brush)new BrushConverter().ConvertFromString(state.Color);
             double thickness = state.Thickness;
 
@@ -224,7 +230,7 @@ namespace KaqiaApp
                 case DrawingMode.Ellipse: _activeShape = new Ellipse { Stroke = brush, StrokeThickness = thickness }; AnnotationCanvas.Children.Add(_activeShape); break;
                 case DrawingMode.Arrow: _activeShape = CreateArrowShapeInternal(); AnnotationCanvas.Children.Add(_activeShape); break;
                 case DrawingMode.Pen: _activePolyline = new Polyline { Stroke = brush, StrokeThickness = thickness, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round }; _activePolyline.Points.Add(p); AnnotationCanvas.Children.Add(_activePolyline); break;
-                case DrawingMode.Text: CreateInteractiveText(p); break;
+                case DrawingMode.Text: CreateInteractiveText(p); SelectToolBtn.IsChecked = true; _currentMode = DrawingMode.Select; return;
             }
             AnnotationCanvas.CaptureMouse();
         }
@@ -233,7 +239,7 @@ namespace KaqiaApp
             if (_activeShape == null && _activePolyline == null) return;
             Point p = e.GetPosition(AnnotationCanvas);
             if (_activeShape != null) {
-                if (_currentMode == DrawingMode.Arrow) UpdateArrowShapeInternal(_activeShape as System.Windows.Shapes.Path, _startPoint, p);
+                if (_activeShape is System.Windows.Shapes.Path arrow) UpdateArrowShapeInternal(arrow, _startPoint, p);
                 else {
                     double left = Math.Min(p.X, _startPoint.X); double top = Math.Min(p.Y, _startPoint.Y);
                     double w = Math.Max(1, Math.Abs(p.X - _startPoint.X)); double h = Math.Max(1, Math.Abs(p.Y - _startPoint.Y));
@@ -247,11 +253,10 @@ namespace KaqiaApp
                 FrameworkElement? content = (FrameworkElement?)_activeShape ?? _activePolyline;
                 if (content != null) {
                     double x, y, w, h;
-                    if (_activeShape is System.Windows.Shapes.Path || content is Polyline) {
+                    if (content is System.Windows.Shapes.Path || content is Polyline) {
                         Rect bounds = (content is Polyline pline) ? GetPolylineBounds(pline) : ((System.Windows.Shapes.Path)content).Data.Bounds;
                         x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
                         if (content is Polyline pl) { for(int i=0; i<pl.Points.Count; i++) pl.Points[i] = new Point(pl.Points[i].X - x, pl.Points[i].Y - y); }
-                        else if (content is System.Windows.Shapes.Path path) { path.RenderTransform = new TranslateTransform(-x, -y); }
                     } else { x = Canvas.GetLeft(content); y = Canvas.GetTop(content); w = content.Width; h = content.Height; }
                     AnnotationCanvas.Children.Remove(content); WrapObject(content, x, y, w, h);
                 }
@@ -289,7 +294,7 @@ namespace KaqiaApp
             var tb = new TextBox { Background = new SolidColorBrush(Color.FromArgb(20, 255, 255, 255)), Foreground = brush, FontSize = 20, FontWeight = FontWeights.Bold, BorderThickness = new Thickness(1), BorderBrush = Brushes.Transparent, MinWidth = 80, AcceptsReturn = true, Text = "输入文字..." };
             tb.GotFocus += (s, e) => { if (tb.Text == "输入文字...") tb.Text = ""; tb.Background = Brushes.White; tb.BorderBrush = Brushes.Gray; };
             tb.LostFocus += (s, e) => { tb.Background = new SolidColorBrush(Color.FromArgb(1, 255, 255, 255)); tb.BorderBrush = Brushes.Transparent; };
-            WrapObject(tb, p.X, p.Y, double.NaN, double.NaN); tb.Focus(); AnnotationCanvas.ReleaseMouseCapture();
+            WrapObject(tb, p.X, p.Y, double.NaN, double.NaN); tb.Focus();
         }
 
         private void WrapObject(FrameworkElement content, double x, double y, double w, double h) {
@@ -335,12 +340,10 @@ namespace KaqiaApp
 
         private void OnBeautifyToggle(object sender, RoutedEventArgs e) => BeautifyPopup.IsOpen = !BeautifyPopup.IsOpen;
         private void OnStickerPickerToggle(object sender, RoutedEventArgs e) => StickerPickerPopup.IsOpen = !StickerPickerPopup.IsOpen;
-        
         private void OnBeautifyParamChanged(object sender, RoutedEventArgs e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnRadiusChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnStrokeChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnPaddingChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
-
         private void OnShadowChanged(object sender, RoutedEventArgs e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
 
         private void OnStrokeColorSelected(object sender, MouseButtonEventArgs e) {
@@ -348,9 +351,9 @@ namespace KaqiaApp
         }
 
         private void OnCanvasColorSelected(object sender, MouseButtonEventArgs e) {
-            if (sender is Border b && b.Tag != null) { 
-                if (b.Tag.ToString() == "Transparent") CanvasLayer.Background = Brushes.Transparent; 
-                else CanvasLayer.Background = b.Background; 
+            if (sender is Border b && b.Background != null) { 
+                CanvasLayer.Background = b.Background; 
+                CanvasHexInput.Text = b.Background.ToString();
                 SaveCurrentConfig();
             }
         }

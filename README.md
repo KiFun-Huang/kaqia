@@ -2,7 +2,7 @@
 
 Kaqia 是一款专为 Windows 设计的高性能、原生截图与图片编辑美化工具。它不仅能捕捉你的屏幕，还能瞬间将普通的截图转化为极具设计感的分享图。
 
-![Kaqia Logo](logo.png)
+<img src="logo.png" width="128" alt="Kaqia Logo">
 
 ## 核心特性
 
