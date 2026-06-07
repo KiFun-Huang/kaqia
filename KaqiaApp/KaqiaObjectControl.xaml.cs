@@ -30,7 +30,9 @@ namespace KaqiaApp
 
         private void UpdateRotateHandlePosition()
         {
-            Canvas.SetLeft(RotateHandle, this.ActualWidth / 2 - 6);
+            // Center in Column 1 (which starts at 10px and has width ActualWidth - 20)
+            double centerX = (this.ActualWidth / 2) - 10 - 6;
+            Canvas.SetLeft(RotateHandle, centerX);
         }
 
         public void SetSelected(bool isSelected)
@@ -68,6 +70,16 @@ namespace KaqiaApp
         }
 
         // --- Interaction ---
+
+        protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+        {
+            if (ControlCanvas.Visibility != Visibility.Visible)
+            {
+                Selected?.Invoke(this, EventArgs.Empty);
+                // Selection logic in MainWindow will call SetSelected(true)
+            }
+            base.OnPreviewMouseDown(e);
+        }
 
         private void OnContentMouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -133,52 +145,50 @@ namespace KaqiaApp
 
         private void ApplyDirectResize(Vector delta)
         {
-            double newWidth = this.Width;
-            double newHeight = this.Height;
+            double currentWidth = double.IsNaN(this.Width) ? this.ActualWidth : this.Width;
+            double currentHeight = double.IsNaN(this.Height) ? this.ActualHeight : this.Height;
 
             switch (_resizeEdge)
             {
                 case "Right":
-                    newWidth = Math.Max(10, this.Width + delta.X);
-                    this.Width = newWidth;
+                    this.Width = Math.Max(10, currentWidth + delta.X);
                     break;
                 case "Left":
-                    newWidth = Math.Max(10, this.Width - delta.X);
-                    this.Width = newWidth;
-                    ObjectTranslate.X += (this.Width == 10) ? 0 : delta.X;
+                    double newWidthL = Math.Max(10, currentWidth - delta.X);
+                    if (newWidthL > 10) ObjectTranslate.X += delta.X;
+                    this.Width = newWidthL;
                     break;
                 case "Bottom":
-                    newHeight = Math.Max(10, this.Height + delta.Y);
-                    this.Height = newHeight;
+                    this.Height = Math.Max(10, currentHeight + delta.Y);
                     break;
                 case "Top":
-                    newHeight = Math.Max(10, this.Height - delta.Y);
-                    this.Height = newHeight;
-                    ObjectTranslate.Y += (this.Height == 10) ? 0 : delta.Y;
+                    double newHeightT = Math.Max(10, currentHeight - delta.Y);
+                    if (newHeightT > 10) ObjectTranslate.Y += delta.Y;
+                    this.Height = newHeightT;
                     break;
                 case "BottomRight":
-                    this.Width = Math.Max(10, this.Width + delta.X);
-                    this.Height = Math.Max(10, this.Height + delta.Y);
+                    this.Width = Math.Max(10, currentWidth + delta.X);
+                    this.Height = Math.Max(10, currentHeight + delta.Y);
                     break;
                 case "TopLeft":
-                    newWidth = Math.Max(10, this.Width - delta.X);
-                    newHeight = Math.Max(10, this.Height - delta.Y);
-                    if (newWidth > 10) ObjectTranslate.X += delta.X;
-                    if (newHeight > 10) ObjectTranslate.Y += delta.Y;
-                    this.Width = newWidth;
-                    this.Height = newHeight;
+                    double newWidthTL = Math.Max(10, currentWidth - delta.X);
+                    double newHeightTL = Math.Max(10, currentHeight - delta.Y);
+                    if (newWidthTL > 10) ObjectTranslate.X += delta.X;
+                    if (newHeightTL > 10) ObjectTranslate.Y += delta.Y;
+                    this.Width = newWidthTL;
+                    this.Height = newHeightTL;
                     break;
                 case "TopRight":
-                    this.Width = Math.Max(10, this.Width + delta.X);
-                    newHeight = Math.Max(10, this.Height - delta.Y);
-                    if (newHeight > 10) ObjectTranslate.Y += delta.Y;
-                    this.Height = newHeight;
+                    this.Width = Math.Max(10, currentWidth + delta.X);
+                    double newHeightTR = Math.Max(10, currentHeight - delta.Y);
+                    if (newHeightTR > 10) ObjectTranslate.Y += delta.Y;
+                    this.Height = newHeightTR;
                     break;
                 case "BottomLeft":
-                    newWidth = Math.Max(10, this.Width - delta.X);
-                    if (newWidth > 10) ObjectTranslate.X += delta.X;
-                    this.Width = newWidth;
-                    this.Height = Math.Max(10, this.Height + delta.Y);
+                    double newWidthBL = Math.Max(10, currentWidth - delta.X);
+                    if (newWidthBL > 10) ObjectTranslate.X += delta.X;
+                    this.Width = newWidthBL;
+                    this.Height = Math.Max(10, currentHeight + delta.Y);
                     break;
             }
         }

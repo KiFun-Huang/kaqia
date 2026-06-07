@@ -36,32 +36,51 @@
 
         <!-- Interaction Overlay -->
         <Grid x:Name="ControlCanvas" Visibility="Collapsed">
-            <!-- 3x3 Grid to perfectly center handles and edges -->
+            <!-- 3x3 Grid for handles and edges -->
             <Grid.RowDefinitions>
-                <RowDefinition Height="0"/>
+                <RowDefinition Height="10"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="0"/>
+                <RowDefinition Height="10"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="0"/>
+                <ColumnDefinition Width="10"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="0"/>
+                <ColumnDefinition Width="10"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Dash Border -->
-            <Rectangle Grid.RowSpan="3" Grid.ColumnSpan="3" Stroke="#00A2FF" StrokeDashArray="3 3" StrokeThickness="1" IsHitTestVisible="False"/>
+            <!-- Dash Border (Visual only) -->
+            <Rectangle Grid.RowSpan="3" Grid.ColumnSpan="3" Stroke="#00A2FF" StrokeDashArray="3 3" StrokeThickness="2" IsHitTestVisible="False"/>
             
-            <!-- Edges -->
-            <Rectangle Grid.Column="0" Grid.Row="1" Width="8" Margin="-4,0,0,0" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Left"/>
-            <Rectangle Grid.Column="2" Grid.Row="1" Width="8" Margin="0,0,-4,0" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Right"/>
-            <Rectangle Grid.Column="1" Grid.Row="0" Height="8" Margin="0,-4,0,0" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Top"/>
-            <Rectangle Grid.Column="1" Grid.Row="2" Height="8" Margin="0,0,0,-4" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Bottom"/>
+            <!-- Move Handles (Outer frame for dragging, center is hollow to allow click-through) -->
+            <Grid Grid.RowSpan="3" Grid.ColumnSpan="3" Cursor="SizeAll" MouseDown="OnContentMouseDown" Background="{x:Null}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="10"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                </Grid.ColumnDefinitions>
+                <!-- Outer areas capture hits for dragging. -->
+                <Rectangle Grid.Row="0" Grid.ColumnSpan="3" Fill="Transparent"/>
+                <Rectangle Grid.Row="2" Grid.ColumnSpan="3" Fill="Transparent"/>
+                <Rectangle Grid.Row="1" Grid.Column="0" Fill="Transparent"/>
+                <Rectangle Grid.Row="1" Grid.Column="2" Fill="Transparent"/>
+            </Grid>
+            
+            <!-- Edges (Specific smaller areas for resizing, centered on each side) -->
+            <Rectangle Grid.Column="0" Grid.Row="1" Width="10" Height="30" VerticalAlignment="Center" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Left"/>
+            <Rectangle Grid.Column="2" Grid.Row="1" Width="10" Height="30" VerticalAlignment="Center" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Right"/>
+            <Rectangle Grid.Column="1" Grid.Row="0" Height="10" Width="30" HorizontalAlignment="Center" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Top"/>
+            <Rectangle Grid.Column="1" Grid.Row="2" Height="10" Width="30" HorizontalAlignment="Center" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Bottom"/>
 
             <!-- Corners -->
-            <Ellipse Grid.Column="0" Grid.Row="0" Margin="-5,-5,0,0" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="TopLeft"/>
-            <Ellipse Grid.Column="2" Grid.Row="0" Margin="0,-5,-5,0" Cursor="SizeNESW" Style="{StaticResource ResizeHandleStyle}" Tag="TopRight"/>
-            <Ellipse Grid.Column="0" Grid.Row="2" Margin="-5,0,0,-5" Cursor="SizeNESW" Style="{StaticResource ResizeHandleStyle}" Tag="BottomLeft"/>
-            <Ellipse Grid.Column="2" Grid.Row="2" Margin="0,0,-5,-5" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="BottomRight"/>
+            <Ellipse Grid.Column="0" Grid.Row="0" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="TopLeft"/>
+            <Ellipse Grid.Column="2" Grid.Row="0" Cursor="SizeNESW" Style="{StaticResource ResizeHandleStyle}" Tag="TopRight"/>
+            <Ellipse Grid.Column="0" Grid.Row="2" Cursor="SizeNESW" Style="{StaticResource ResizeHandleStyle}" Tag="BottomLeft"/>
+            <Ellipse Grid.Column="2" Grid.Row="2" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="BottomRight"/>
 
             <!-- Action Buttons Layer (Using a Canvas inside the Grid for absolute positioning relative to bottom) -->
             <Canvas Grid.Row="2" Grid.Column="1" IsHitTestVisible="True">

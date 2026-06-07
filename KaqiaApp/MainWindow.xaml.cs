@@ -217,8 +217,12 @@ namespace KaqiaApp
         // --- DRAWING LOGIC ---
 
         private void OnAnnotationCanvasMouseDown(object sender, MouseButtonEventArgs e) {
-            if (e.OriginalSource != AnnotationCanvas) return;
-            if (_currentMode == DrawingMode.Select) { DeselectAll(); return; }
+            if (e.OriginalSource == AnnotationCanvas) { 
+                DeselectAll(); 
+                Keyboard.ClearFocus();
+                AnnotationCanvas.Focus();
+                if (_currentMode == DrawingMode.Select) return;
+            } else return;
 
             Point p = e.GetPosition(AnnotationCanvas); _startPoint = p;
             if (!_config.Tools.TryGetValue(_currentMode.ToString(), out var state)) return;
@@ -253,10 +257,17 @@ namespace KaqiaApp
                 FrameworkElement? content = (FrameworkElement?)_activeShape ?? _activePolyline;
                 if (content != null) {
                     double x, y, w, h;
-                    if (content is System.Windows.Shapes.Path || content is Polyline) {
-                        Rect bounds = (content is Polyline pline) ? GetPolylineBounds(pline) : ((System.Windows.Shapes.Path)content).Data.Bounds;
+                    if (content is System.Windows.Shapes.Path path) {
+                        Rect bounds = path.Data.Bounds;
                         x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
-                        if (content is Polyline pl) { for(int i=0; i<pl.Points.Count; i++) pl.Points[i] = new Point(pl.Points[i].X - x, pl.Points[i].Y - y); }
+                        // Store the original points to allow re-drawing
+                        if (path.Tag is Point[] pts) {
+                            path.Stretch = Stretch.Fill;
+                        }
+                    } else if (content is Polyline pl) {
+                        Rect bounds = GetPolylineBounds(pl);
+                        x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
+                        for(int i=0; i<pl.Points.Count; i++) pl.Points[i] = new Point(pl.Points[i].X - x, pl.Points[i].Y - y);
                     } else { x = Canvas.GetLeft(content); y = Canvas.GetTop(content); w = content.Width; h = content.Height; }
                     AnnotationCanvas.Children.Remove(content); WrapObject(content, x, y, w, h);
                 }
@@ -279,6 +290,7 @@ namespace KaqiaApp
 
         private void UpdateArrowShapeInternal(System.Windows.Shapes.Path? path, Point start, Point end) {
             if (path == null) return;
+            path.Tag = new Point[] { start, end }; // Save for reference
             Vector dir = end - start; if (dir.Length < 5) return;
             dir.Normalize(); Vector perp = new Vector(-dir.Y, dir.X);
             Point p1 = end - dir * 15 + perp * 7; Point p2 = end - dir * 15 - perp * 7;
@@ -291,16 +303,39 @@ namespace KaqiaApp
         private void CreateInteractiveText(Point p) {
             if (!_config.Tools.TryGetValue("Text", out var state)) return;
             Brush brush = (Brush)new BrushConverter().ConvertFromString(state.Color);
-            var tb = new TextBox { Background = new SolidColorBrush(Color.FromArgb(20, 255, 255, 255)), Foreground = brush, FontSize = 20, FontWeight = FontWeights.Bold, BorderThickness = new Thickness(1), BorderBrush = Brushes.Transparent, MinWidth = 80, AcceptsReturn = true, Text = "输入文字..." };
-            tb.GotFocus += (s, e) => { if (tb.Text == "输入文字...") tb.Text = ""; tb.Background = Brushes.White; tb.BorderBrush = Brushes.Gray; };
-            tb.LostFocus += (s, e) => { tb.Background = new SolidColorBrush(Color.FromArgb(1, 255, 255, 255)); tb.BorderBrush = Brushes.Transparent; };
+            var tb = new TextBox { 
+                Background = Brushes.Transparent, 
+                Foreground = brush, 
+                FontSize = 20, 
+                FontWeight = FontWeights.Bold, 
+                BorderThickness = new Thickness(1), 
+                BorderBrush = Brushes.Transparent, 
+                MinWidth = 80, 
+                AcceptsReturn = true, 
+                Text = "输入文字..." 
+            };
+            tb.GotFocus += (s, e) => { 
+                if (tb.Text == "输入文字...") tb.Text = ""; 
+                tb.Background = new SolidColorBrush(Color.FromArgb(30, 0, 0, 0)); 
+                tb.BorderBrush = new SolidColorBrush(Color.FromArgb(80, 0, 162, 255)); 
+            };
+            tb.LostFocus += (s, e) => { 
+                tb.Background = Brushes.Transparent; 
+                tb.BorderBrush = Brushes.Transparent; 
+            };
             WrapObject(tb, p.X, p.Y, double.NaN, double.NaN); tb.Focus();
         }
 
         private void WrapObject(FrameworkElement content, double x, double y, double w, double h) {
-            var oc = new KaqiaObjectControl(); if (!double.IsNaN(w)) oc.Width = w; if (!double.IsNaN(h)) oc.Height = h;
+            var oc = new KaqiaObjectControl(); 
+            if (!double.IsNaN(w)) oc.Width = w; else if (content is TextBox) oc.Width = double.NaN;
+            if (!double.IsNaN(h)) oc.Height = h; else if (content is TextBox) oc.Height = double.NaN;
+
             content.Width = double.NaN; content.Height = double.NaN;
-            if (content is Shape s) s.Stretch = Stretch.Fill; else if (content is Image i) i.Stretch = Stretch.Fill;
+            if (content is Shape s) s.Stretch = Stretch.Fill; 
+            else if (content is Image i) i.Stretch = Stretch.Fill;
+            else if (content is TextBox) { content.HorizontalAlignment = HorizontalAlignment.Stretch; content.VerticalAlignment = VerticalAlignment.Stretch; }
+
             oc.ObjectContent.Content = content;
             oc.DeleteRequested += (s, e) => { ImageContainer.Children.Remove(oc); if (_selectedObject == oc) _selectedObject = null; ToolPropertyPopup.IsOpen = false; };
             oc.Selected += (s, e) => { 

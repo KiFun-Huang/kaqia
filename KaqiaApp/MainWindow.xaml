@@ -71,7 +71,7 @@
                                 </Border.OpacityMask>
                                 <Canvas x:Name="ImageContainer" Background="Transparent">
                                     <Image x:Name="CroppedImage" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
-                                    <Canvas x:Name="AnnotationCanvas" Background="Transparent" />
+                                    <Canvas x:Name="AnnotationCanvas" Background="Transparent" Focusable="True" />
                                 </Canvas>
                             </Border>
                             <Border x:Name="StrokeLayer" BorderThickness="0" BorderBrush="White" CornerRadius="{Binding CornerRadius, ElementName=ImageClipBorder}" IsHitTestVisible="False" Background="Transparent" />
