@@ -70,10 +70,10 @@
             </Grid>
             
             <!-- Edges (Specific smaller areas for resizing, centered on each side) -->
-            <Rectangle Grid.Column="0" Grid.Row="1" Width="10" Height="30" VerticalAlignment="Center" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Left"/>
-            <Rectangle Grid.Column="2" Grid.Row="1" Width="10" Height="30" VerticalAlignment="Center" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Right"/>
-            <Rectangle Grid.Column="1" Grid.Row="0" Height="10" Width="30" HorizontalAlignment="Center" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Top"/>
-            <Rectangle Grid.Column="1" Grid.Row="2" Height="10" Width="30" HorizontalAlignment="Center" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Bottom"/>
+            <Rectangle x:Name="LeftHandle" Grid.Column="0" Grid.Row="1" Width="10" Height="30" VerticalAlignment="Center" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Left"/>
+            <Rectangle x:Name="RightHandle" Grid.Column="2" Grid.Row="1" Width="10" Height="30" VerticalAlignment="Center" Cursor="SizeWE" Style="{StaticResource EdgeTriggerStyle}" Tag="Right"/>
+            <Rectangle x:Name="TopHandle" Grid.Column="1" Grid.Row="0" Height="10" Width="30" HorizontalAlignment="Center" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Top"/>
+            <Rectangle x:Name="BottomHandle" Grid.Column="1" Grid.Row="2" Height="10" Width="30" HorizontalAlignment="Center" Cursor="SizeNS" Style="{StaticResource EdgeTriggerStyle}" Tag="Bottom"/>
 
             <!-- Corners -->
             <Ellipse Grid.Column="0" Grid.Row="0" Cursor="SizeNWSE" Style="{StaticResource ResizeHandleStyle}" Tag="TopLeft"/>

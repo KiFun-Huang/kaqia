@@ -165,9 +165,14 @@ namespace KaqiaApp
             ToolPropertyPopup.PlacementTarget = Toolbar;
             ToolPropertyTitle.Text = mode.ToString() + " 属性";
 
+            bool isText = mode == DrawingMode.Text;
+            ToolThicknessLabel.Text = isText ? "字号" : "粗细";
+            ToolThicknessSlider.Minimum = isText ? 12 : 1;
+            ToolThicknessSlider.Maximum = isText ? 100 : 15;
+
             if (_config.Tools.TryGetValue(mode.ToString(), out var state)) {
                 if (target != null) {
-                    ToolThicknessSlider.Value = target.ObjectThickness;
+                    ToolThicknessSlider.Value = isText ? target.ObjectFontSize : target.ObjectThickness;
                     ToolHexInput.Text = target.ObjectBrush.ToString();
                 } else {
                     ToolThicknessSlider.Value = state.Thickness;
@@ -179,8 +184,15 @@ namespace KaqiaApp
 
         private void OnToolParamChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
             if (!_isInitialized) return;
-            if (_selectedObject != null) _selectedObject.ObjectThickness = e.NewValue;
-            else if (_currentMode != DrawingMode.Select) { _config.Tools[_currentMode.ToString()].Thickness = e.NewValue; SaveCurrentConfig(); }
+            bool isText = _currentMode == DrawingMode.Text || (_selectedObject != null && _selectedObject.ObjectContent.Content is TextBox);
+            
+            if (_selectedObject != null) {
+                if (isText) _selectedObject.ObjectFontSize = e.NewValue;
+                else _selectedObject.ObjectThickness = e.NewValue;
+            } else if (_currentMode != DrawingMode.Select) {
+                _config.Tools[_currentMode.ToString()].Thickness = e.NewValue;
+                SaveCurrentConfig();
+            }
         }
 
         private void OnToolColorSelected(object sender, MouseButtonEventArgs e) {
@@ -345,7 +357,7 @@ namespace KaqiaApp
 
             content.Width = double.NaN; content.Height = double.NaN;
             if (content is Shape s) s.Stretch = Stretch.Fill; 
-            else if (content is Image i) i.Stretch = Stretch.Fill;
+            else if (content is Image i) i.Stretch = Stretch.Uniform;
             else if (content is TextBox) { content.HorizontalAlignment = HorizontalAlignment.Stretch; content.VerticalAlignment = VerticalAlignment.Stretch; }
 
             oc.ObjectContent.Content = content;
@@ -369,8 +381,21 @@ namespace KaqiaApp
 
         private void OnStickerSelected(object sender, MouseButtonEventArgs e) {
             if (sender is FrameworkElement fe && fe.DataContext is StickerItem item) {
-                var img = new Image { Source = item.Image, Stretch = Stretch.Uniform };
-                WrapObject(img, (_currentSelection.Width - 120) / 2, (_currentSelection.Height - 120) / 2, 120, 120); StickerPickerPopup.IsOpen = false;
+                var bitmap = item.Image;
+                double w = bitmap.Width;
+                double h = bitmap.Height;
+
+                if (w == 0 || h == 0) { w = 120; h = 120; }
+                else {
+                    // Fit within a maximum dimension of 200px while maintaining aspect ratio
+                    double maxDim = 200;
+                    double scale = Math.Min(maxDim / w, maxDim / h);
+                    if (scale < 1.0) { w *= scale; h *= scale; }
+                }
+
+                var img = new Image { Source = bitmap, Stretch = Stretch.Uniform };
+                WrapObject(img, (_currentSelection.Width - w) / 2, (_currentSelection.Height - h) / 2, w, h); 
+                StickerPickerPopup.IsOpen = false;
             }
         }
 

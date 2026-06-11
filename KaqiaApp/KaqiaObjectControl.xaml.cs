@@ -38,6 +38,15 @@ namespace KaqiaApp
         public void SetSelected(bool isSelected)
         {
             ControlCanvas.Visibility = isSelected ? Visibility.Visible : Visibility.Collapsed;
+            if (isSelected)
+            {
+                // Hide edge handles for images to force proportional corner resizing
+                bool isImage = ObjectContent.Content is Image;
+                LeftHandle.Visibility = isImage ? Visibility.Collapsed : Visibility.Visible;
+                RightHandle.Visibility = isImage ? Visibility.Collapsed : Visibility.Visible;
+                TopHandle.Visibility = isImage ? Visibility.Collapsed : Visibility.Visible;
+                BottomHandle.Visibility = isImage ? Visibility.Collapsed : Visibility.Visible;
+            }
         }
 
         // --- Property Management ---
@@ -66,6 +75,17 @@ namespace KaqiaApp
             }
             set {
                 if (ObjectContent.Content is Shape s) s.StrokeThickness = value;
+            }
+        }
+
+        public double ObjectFontSize
+        {
+            get {
+                if (ObjectContent.Content is TextBox tb) return tb.FontSize;
+                return 0;
+            }
+            set {
+                if (ObjectContent.Content is TextBox tb) tb.FontSize = value;
             }
         }
 
@@ -148,6 +168,8 @@ namespace KaqiaApp
         {
             double currentWidth = double.IsNaN(this.Width) ? this.ActualWidth : this.Width;
             double currentHeight = double.IsNaN(this.Height) ? this.ActualHeight : this.Height;
+            bool isProportional = ObjectContent.Content is Image;
+            double aspectRatio = currentWidth / currentHeight;
 
             switch (_resizeEdge)
             {
@@ -168,28 +190,74 @@ namespace KaqiaApp
                     this.Height = newHeightT;
                     break;
                 case "BottomRight":
-                    this.Width = Math.Max(10, currentWidth + delta.X);
-                    this.Height = Math.Max(10, currentHeight + delta.Y);
+                    if (isProportional)
+                    {
+                        double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 + delta.X / currentWidth));
+                        this.Width = currentWidth * scale;
+                        this.Height = currentHeight * scale;
+                    }
+                    else
+                    {
+                        this.Width = Math.Max(10, currentWidth + delta.X);
+                        this.Height = Math.Max(10, currentHeight + delta.Y);
+                    }
                     break;
                 case "TopLeft":
-                    double newWidthTL = Math.Max(10, currentWidth - delta.X);
-                    double newHeightTL = Math.Max(10, currentHeight - delta.Y);
-                    if (newWidthTL > 10) ObjectTranslate.X += delta.X;
-                    if (newHeightTL > 10) ObjectTranslate.Y += delta.Y;
-                    this.Width = newWidthTL;
-                    this.Height = newHeightTL;
+                    if (isProportional)
+                    {
+                        double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 - delta.X / currentWidth));
+                        double nw = currentWidth * scale;
+                        double nh = currentHeight * scale;
+                        ObjectTranslate.X -= (nw - currentWidth);
+                        ObjectTranslate.Y -= (nh - currentHeight);
+                        this.Width = nw;
+                        this.Height = nh;
+                    }
+                    else
+                    {
+                        double newWidthTL = Math.Max(10, currentWidth - delta.X);
+                        double newHeightTL = Math.Max(10, currentHeight - delta.Y);
+                        if (newWidthTL > 10) ObjectTranslate.X += delta.X;
+                        if (newHeightTL > 10) ObjectTranslate.Y += delta.Y;
+                        this.Width = newWidthTL;
+                        this.Height = newHeightTL;
+                    }
                     break;
                 case "TopRight":
-                    this.Width = Math.Max(10, currentWidth + delta.X);
-                    double newHeightTR = Math.Max(10, currentHeight - delta.Y);
-                    if (newHeightTR > 10) ObjectTranslate.Y += delta.Y;
-                    this.Height = newHeightTR;
+                    if (isProportional)
+                    {
+                        double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 + delta.X / currentWidth));
+                        double nw = currentWidth * scale;
+                        double nh = currentHeight * scale;
+                        ObjectTranslate.Y -= (nh - currentHeight);
+                        this.Width = nw;
+                        this.Height = nh;
+                    }
+                    else
+                    {
+                        this.Width = Math.Max(10, currentWidth + delta.X);
+                        double newHeightTR = Math.Max(10, currentHeight - delta.Y);
+                        if (newHeightTR > 10) ObjectTranslate.Y += delta.Y;
+                        this.Height = newHeightTR;
+                    }
                     break;
                 case "BottomLeft":
-                    double newWidthBL = Math.Max(10, currentWidth - delta.X);
-                    if (newWidthBL > 10) ObjectTranslate.X += delta.X;
-                    this.Width = newWidthBL;
-                    this.Height = Math.Max(10, currentHeight + delta.Y);
+                    if (isProportional)
+                    {
+                        double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 - delta.X / currentWidth));
+                        double nw = currentWidth * scale;
+                        double nh = currentHeight * scale;
+                        ObjectTranslate.X -= (nw - currentWidth);
+                        this.Width = nw;
+                        this.Height = nh;
+                    }
+                    else
+                    {
+                        double newWidthBL = Math.Max(10, currentWidth - delta.X);
+                        if (newWidthBL > 10) ObjectTranslate.X += delta.X;
+                        this.Width = newWidthBL;
+                        this.Height = Math.Max(10, currentHeight + delta.Y);
+                    }
                     break;
             }
         }

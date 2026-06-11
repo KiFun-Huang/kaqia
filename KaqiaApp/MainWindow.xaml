@@ -155,9 +155,9 @@
                     <TextBlock x:Name="ToolPropertyTitle" Text="工具选项" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
                     <Grid Margin="0,3">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="35"/></Grid.ColumnDefinitions>
-                        <TextBlock Text="粗细" Style="{StaticResource SmallLabel}"/>
+                        <TextBlock x:Name="ToolThicknessLabel" Text="粗细" Style="{StaticResource SmallLabel}"/>
                         <Slider x:Name="ToolThicknessSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="1" Maximum="15" Value="3" ValueChanged="OnToolParamChanged"/>
-                        <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=ToolThicknessSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
+                        <TextBlock x:Name="ToolThicknessValue" Grid.Column="2" Text="{Binding Value, ElementName=ToolThicknessSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
                     </Grid>
                     <TextBlock Text="常用颜色" Foreground="#666" FontSize="10" Margin="45,5,0,0"/>
                     <WrapPanel Margin="45,2,0,5">
