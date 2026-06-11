@@ -20,11 +20,11 @@ namespace KaqiaCore
         public string DefaultSavePath { get; set; } = "";
 
         // Beautify Parameters
-        public double Radius { get; set; } = 0;
-        public double StrokeThickness { get; set; } = 0;
-        public double Padding { get; set; } = 0;
-        public string StrokeColor { get; set; } = "#80FFFFFF";
-        public string CanvasColor { get; set; } = "Transparent";
+        public double Radius { get; set; } = 12;
+        public double StrokeThickness { get; set; } = 2;
+        public double Padding { get; set; } = 20;
+        public string StrokeColor { get; set; } = "#FFFFFF";
+        public string CanvasColor { get; set; } = "#FFFFFF";
         public bool ShadowEnabled { get; set; } = true;
         public string LastCustomColor { get; set; } = "#F44336";
 

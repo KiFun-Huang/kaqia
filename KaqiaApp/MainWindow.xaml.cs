@@ -77,13 +77,16 @@ namespace KaqiaApp
             PaddingSlider.Value = _config.Padding;
             ShadowCheck.IsChecked = _config.ShadowEnabled;
             try {
-                if (!string.IsNullOrEmpty(_config.StrokeColor))
+                if (!string.IsNullOrEmpty(_config.StrokeColor)) {
                     StrokeLayer.BorderBrush = (Brush)new BrushConverter().ConvertFromString(_config.StrokeColor);
+                    StrokeHexInput.Text = _config.StrokeColor;
+                }
                 if (!string.IsNullOrEmpty(_config.CanvasColor)) {
                     CanvasLayer.Background = (Brush)new BrushConverter().ConvertFromString(_config.CanvasColor);
                     CanvasHexInput.Text = _config.CanvasColor;
                 }
             } catch { }
+            UpdateBeautifyEffects();
         }
 
         private void SaveCurrentConfig()
@@ -138,7 +141,7 @@ namespace KaqiaApp
             SelectionBorder.Visibility = Visibility.Collapsed; SelectionRect.Rect = _currentSelection;
             try {
                 var croppedBitmap = new CroppedBitmap(_fullScreenshot, new Int32Rect((int)(_currentSelection.X * _scaleX), (int)(_currentSelection.Y * _scaleY), (int)(_currentSelection.Width * _scaleX), (int)(_currentSelection.Height * _scaleY)));
-                CroppedImage.Source = croppedBitmap; CroppedImage.Width = _currentSelection.Width; CroppedImage.Height = _currentSelection.Height;
+                CroppedImage.Source = croppedBitmap; CroppedImage.Source = croppedBitmap; CroppedImage.Width = _currentSelection.Width; CroppedImage.Height = _currentSelection.Height;
                 ImageContainer.Width = _currentSelection.Width; ImageContainer.Height = _currentSelection.Height;
                 AnnotationCanvas.Width = _currentSelection.Width; AnnotationCanvas.Height = _currentSelection.Height;
                 Canvas.SetLeft(EditCanvas, _currentSelection.Left); Canvas.SetTop(EditCanvas, _currentSelection.Top);
@@ -421,10 +424,46 @@ namespace KaqiaApp
         private void OnRadiusChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnStrokeChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnPaddingChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
-        private void OnShadowChanged(object sender, RoutedEventArgs e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
+        private void OnShadowChanged(object sender, RoutedEventArgs e) { 
+            if (!_isInitialized) return;
+            UpdateBeautifyEffects(); 
+            bool isEffectivelyEmpty = (CanvasLayer.Background == null || CanvasLayer.Background == Brushes.Transparent || CanvasLayer.Background.ToString() == "#00000000");
+            if (ShadowCheck.IsChecked == true && PaddingSlider.Value == 0 && isEffectivelyEmpty) {
+                PaddingSlider.Value = 20;
+                CanvasLayer.Background = Brushes.White;
+                CanvasHexInput.Text = "#FFFFFFFF";
+            }
+            SaveCurrentConfig(); 
+        }
 
         private void OnStrokeColorSelected(object sender, MouseButtonEventArgs e) {
-            if (sender is Border b && b.Background != null) { StrokeLayer.BorderBrush = b.Background; SaveCurrentConfig(); }
+            if (sender is Border b && b.Background != null) { 
+                StrokeLayer.BorderBrush = b.Background; 
+                StrokeHexInput.Text = b.Background.ToString();
+                SaveCurrentConfig(); 
+            }
+        }
+
+        private void OnCustomStrokeColorClick(object sender, MouseButtonEventArgs e) {
+            try {
+                var brush = (Brush)new BrushConverter().ConvertFromString(_config.LastCustomColor);
+                StrokeLayer.BorderBrush = brush;
+                StrokeHexInput.Text = _config.LastCustomColor;
+                SaveCurrentConfig();
+            } catch { }
+            StrokeHexInput.Focus();
+            StrokeHexInput.SelectAll();
+        }
+
+        private void OnStrokeHexKeyDown(object sender, KeyEventArgs e) {
+            if (e.Key == Key.Enter) {
+                try {
+                    var brush = (Brush)new BrushConverter().ConvertFromString(StrokeHexInput.Text);
+                    StrokeLayer.BorderBrush = brush;
+                    _config.LastCustomColor = StrokeHexInput.Text;
+                    SaveCurrentConfig();
+                } catch { }
+            }
         }
 
         private void OnCanvasColorSelected(object sender, MouseButtonEventArgs e) {
