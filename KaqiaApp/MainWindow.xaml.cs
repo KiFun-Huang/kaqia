@@ -108,10 +108,10 @@ namespace KaqiaApp
             }
         }
 
-        private void DeselectAll() {
+        private void DeselectAll(bool closePopup = true) {
             foreach (var child in ImageContainer.Children) if (child is KaqiaObjectControl oc) oc.SetSelected(false);
             _selectedObject = null;
-            ToolPropertyPopup.IsOpen = false;
+            if (closePopup) ToolPropertyPopup.IsOpen = false;
         }
 
         private void OnMouseDown(object sender, MouseButtonEventArgs e) {
@@ -164,7 +164,7 @@ namespace KaqiaApp
         private void ShowToolPropertyPopup(DrawingMode mode, KaqiaObjectControl? target = null) {
             ToolPropertyPopup.PlacementTarget = Toolbar;
             ToolPropertyTitle.Text = mode.ToString() + " 属性";
-            
+
             if (_config.Tools.TryGetValue(mode.ToString(), out var state)) {
                 if (target != null) {
                     ToolThicknessSlider.Value = target.ObjectThickness;
@@ -190,10 +190,22 @@ namespace KaqiaApp
             }
         }
 
+        private void OnCustomColorClick(object sender, MouseButtonEventArgs e) {
+            try {
+                var brush = (Brush)new BrushConverter().ConvertFromString(_config.LastCustomColor);
+                ApplyToolColor(brush);
+                ToolHexInput.Text = _config.LastCustomColor;
+            } catch { }
+            ToolHexInput.Focus();
+            ToolHexInput.SelectAll();
+        }
+
         private void OnToolHexKeyDown(object sender, KeyEventArgs e) {
             if (e.Key == Key.Enter) {
                 try {
                     var brush = (Brush)new BrushConverter().ConvertFromString(ToolHexInput.Text);
+                    _config.LastCustomColor = ToolHexInput.Text;
+                    SaveCurrentConfig();
                     ApplyToolColor(brush);
                 } catch { }
             }
@@ -339,7 +351,12 @@ namespace KaqiaApp
             oc.ObjectContent.Content = content;
             oc.DeleteRequested += (s, e) => { ImageContainer.Children.Remove(oc); if (_selectedObject == oc) _selectedObject = null; ToolPropertyPopup.IsOpen = false; };
             oc.Selected += (s, e) => { 
-                DeselectAll(); oc.SetSelected(true); _selectedObject = oc; 
+                if (_selectedObject == oc && ToolPropertyPopup.IsOpen) return;
+
+                // Optimized selection logic: deselect others but don't close popup yet to avoid flicker
+                foreach (var child in ImageContainer.Children) if (child is KaqiaObjectControl other) other.SetSelected(false);
+
+                oc.SetSelected(true); _selectedObject = oc; 
                 DrawingMode mode = DrawingMode.Rectangle; 
                 if (content is System.Windows.Shapes.Path) mode = DrawingMode.Arrow;
                 else if (content is Polyline) mode = DrawingMode.Pen;
@@ -347,7 +364,7 @@ namespace KaqiaApp
                 else if (content is TextBox) mode = DrawingMode.Text;
                 ShowToolPropertyPopup(mode, oc);
             };
-            ImageContainer.Children.Add(oc); Canvas.SetLeft(oc, x); Canvas.SetTop(oc, y); DeselectAll(); oc.SetSelected(true); _selectedObject = oc;
+            ImageContainer.Children.Add(oc); Canvas.SetLeft(oc, x); Canvas.SetTop(oc, y); DeselectAll(false); oc.SetSelected(true); _selectedObject = oc;
         }
 
         private void OnStickerSelected(object sender, MouseButtonEventArgs e) {

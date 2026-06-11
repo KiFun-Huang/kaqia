@@ -7,7 +7,7 @@ namespace KaqiaCore
 {
     public class ToolState
     {
-        public string Color { get; set; } = "#FFFF0000"; // Default Red
+        public string Color { get; set; } = "#F44336"; // Modern Red
         public double Thickness { get; set; } = 3.0;
     }
 
@@ -26,6 +26,7 @@ namespace KaqiaCore
         public string StrokeColor { get; set; } = "#80FFFFFF";
         public string CanvasColor { get; set; } = "Transparent";
         public bool ShadowEnabled { get; set; } = true;
+        public string LastCustomColor { get; set; } = "#F44336";
 
         // Tool States
         public Dictionary<string, ToolState> Tools { get; set; } = new Dictionary<string, ToolState>

@@ -149,7 +149,7 @@
                     </Popup>
 
                     <!-- TOOL PROPERTY POPUP -->
-                    <Popup x:Name="ToolPropertyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
+                    <Popup x:Name="ToolPropertyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="True" VerticalOffset="-10">
                     <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="280">
                     <StackPanel>
                     <TextBlock x:Name="ToolPropertyTitle" Text="工具选项" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
@@ -159,16 +159,37 @@
                         <Slider x:Name="ToolThicknessSlider" Grid.Column="1" Style="{StaticResource PanelSlider}" Minimum="1" Maximum="15" Value="3" ValueChanged="OnToolParamChanged"/>
                         <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=ToolThicknessSlider, StringFormat={}{0:0}}" Foreground="#555" VerticalAlignment="Center" FontSize="10" HorizontalAlignment="Right"/>
                     </Grid>
-                    <TextBlock Text="颜色" Foreground="#666" FontSize="10" Margin="45,5,0,0"/>
+                    <TextBlock Text="常用颜色" Foreground="#666" FontSize="10" Margin="45,5,0,0"/>
+                    <WrapPanel Margin="45,2,0,5">
+                        <Border Style="{StaticResource ColorSwatch}" Background="#F44336" MouseDown="OnToolColorSelected" Tag="#F44336" ToolTip="红色"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#2196F3" MouseDown="OnToolColorSelected" Tag="#2196F3" ToolTip="蓝色"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#4CAF50" MouseDown="OnToolColorSelected" Tag="#4CAF50" ToolTip="绿色"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#FFC107" MouseDown="OnToolColorSelected" Tag="#FFC107" ToolTip="黄色"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#9E9E9E" MouseDown="OnToolColorSelected" Tag="#9E9E9E" ToolTip="灰色"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#333333" MouseDown="OnToolColorSelected" Tag="#333333" ToolTip="黑色"/>
+                        <Border Style="{StaticResource ColorSwatch}" Background="#FFFFFF" MouseDown="OnToolColorSelected" Tag="#FFFFFF" ToolTip="白色"/>
+                    </WrapPanel>
+
+                    <TextBlock Text="自定义" Foreground="#666" FontSize="10" Margin="45,5,0,0"/>
                     <Grid Margin="45,2,0,5">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
-                        <WrapPanel>
-                            <Border Style="{StaticResource ColorSwatch}" Background="#FF5555" MouseDown="OnToolColorSelected" Tag="#FF5555"/>
-                            <Border Style="{StaticResource ColorSwatch}" Background="#00C853" MouseDown="OnToolColorSelected" Tag="#00C853"/>
-                            <Border Style="{StaticResource ColorSwatch}" Background="#00A2FF" MouseDown="OnToolColorSelected" Tag="#00A2FF"/>
-                            <Border Style="{StaticResource ColorSwatch}" Background="White" MouseDown="OnToolColorSelected" Tag="White"/>
-                        </WrapPanel>
-                        <TextBox Grid.Column="1" x:Name="ToolHexInput" Text="#FFFF0000" FontSize="10" Padding="2" VerticalAlignment="Center" KeyDown="OnToolHexKeyDown" />
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="20" Height="20" Margin="3" CornerRadius="10" Cursor="Hand" BorderBrush="#444" BorderThickness="1" MouseDown="OnCustomColorClick" ToolTip="自定义颜色">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#FF0000" Offset="0.0" />
+                                    <GradientStop Color="#FFFF00" Offset="0.16" />
+                                    <GradientStop Color="#00FF00" Offset="0.33" />
+                                    <GradientStop Color="#00FFFF" Offset="0.5" />
+                                    <GradientStop Color="#0000FF" Offset="0.66" />
+                                    <GradientStop Color="#FF00FF" Offset="0.83" />
+                                    <GradientStop Color="#FF0000" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <TextBox Grid.Column="1" x:Name="ToolHexInput" Text="#F44336" FontSize="10" Padding="5,2" VerticalAlignment="Center" KeyDown="OnToolHexKeyDown" Margin="5,0,15,0"/>
                     </Grid>
                     </StackPanel>
                     </Border>

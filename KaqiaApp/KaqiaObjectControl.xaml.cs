@@ -73,17 +73,18 @@ namespace KaqiaApp
 
         protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
         {
-            if (ControlCanvas.Visibility != Visibility.Visible)
-            {
-                Selected?.Invoke(this, EventArgs.Empty);
-                // Selection logic in MainWindow will call SetSelected(true)
-            }
+            Selected?.Invoke(this, EventArgs.Empty);
             base.OnPreviewMouseDown(e);
+        }
+
+        protected override void OnMouseDown(MouseButtonEventArgs e)
+        {
+            e.Handled = true; // Stop bubbling to MainCanvas to prevent deselection
+            base.OnMouseDown(e);
         }
 
         private void OnContentMouseDown(object sender, MouseButtonEventArgs e)
         {
-            Selected?.Invoke(this, EventArgs.Empty);
             SetSelected(true);
             _isDragging = true;
             _lastMousePosition = e.GetPosition(Parent as UIElement);
