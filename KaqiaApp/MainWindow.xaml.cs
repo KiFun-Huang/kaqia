@@ -596,50 +596,6 @@ namespace KaqiaApp
 
         // --- BEAUTIFY LOGIC ---
 
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern IntPtr MonitorFromRect(ref RECT lprc, uint dwFlags);
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
-
-        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-        public struct RECT {
-            public int left; public int top; public int right; public int bottom;
-        }
-
-        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-        public struct MONITORINFO {
-            public uint cbSize;
-            public RECT rcMonitor;
-            public RECT rcWork;
-            public uint dwFlags;
-        }
-
-        private Rect GetMonitorWorkArea(Rect selection) {
-            int globalX = (int)(selection.X + SystemParameters.VirtualScreenLeft);
-            int globalY = (int)(selection.Y + SystemParameters.VirtualScreenTop);
-            RECT r = new RECT { 
-                left = globalX, 
-                top = globalY, 
-                right = globalX + Math.Max(1, (int)selection.Width), 
-                bottom = globalY + Math.Max(1, (int)selection.Height) 
-            };
-            
-            IntPtr hMonitor = MonitorFromRect(ref r, 2 /* MONITOR_DEFAULTTONEAREST */);
-            if (hMonitor != IntPtr.Zero) {
-                MONITORINFO info = new MONITORINFO();
-                info.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(MONITORINFO));
-                if (GetMonitorInfo(hMonitor, ref info)) {
-                    return new Rect(
-                        info.rcWork.left - SystemParameters.VirtualScreenLeft, 
-                        info.rcWork.top - SystemParameters.VirtualScreenTop, 
-                        info.rcWork.right - info.rcWork.left, 
-                        info.rcWork.bottom - info.rcWork.top);
-                }
-            }
-            return new Rect(0, 0, Width, Height); // fallback to full window bounds
-        }
-
         private void UpdateBeautifyEffects() {
             if (!_isInitialized || EditCanvas.Visibility != Visibility.Visible) return;
             StrokeLayer.CornerRadius = new CornerRadius(RadiusSlider.Value); StrokeLayer.BorderThickness = new Thickness(StrokeSlider.Value);
@@ -654,16 +610,10 @@ namespace KaqiaApp
             double tbWidth = Toolbar.ActualWidth > 0 ? Toolbar.ActualWidth : 420;
             double tbHeight = Toolbar.ActualHeight > 0 ? Toolbar.ActualHeight : 42;
 
-            Rect workArea = GetMonitorWorkArea(_currentSelection);
-            
-            double screenRelX = workArea.X;
-            double screenRelY = workArea.Y;
-            double screenMaxX = workArea.Right;
-            double screenMaxY = workArea.Bottom;
-
             if (_toolbarManuallyMoved) {
-                double curLeft = Math.Max(screenRelX, Math.Min(Toolbar.Margin.Left, screenMaxX - tbWidth));
-                double curTop = Math.Max(screenRelY, Math.Min(Toolbar.Margin.Top, screenMaxY - tbHeight));
+                // Ensure it stays within the overall virtual screen bounds
+                double curLeft = Math.Max(0, Math.Min(Toolbar.Margin.Left, Width - tbWidth));
+                double curTop = Math.Max(0, Math.Min(Toolbar.Margin.Top, Height - tbHeight));
                 Toolbar.Margin = new Thickness(curLeft, curTop, 0, 0);
                 return;
             }
@@ -672,14 +622,18 @@ namespace KaqiaApp
             double targetX = _currentSelection.Right - tbWidth;
             double targetY = _currentSelection.Bottom + 20 + eb;
 
-            // Constrain vertically within the current monitor's working area
-            if (targetY + tbHeight > screenMaxY) {
+            // Simple heuristic: If the crop box is tall (> 600px) or placing it outside exceeds 
+            // the global virtual screen height, place the toolbar INSIDE the crop box.
+            if (_currentSelection.Height > 600 || targetY + tbHeight > Height) {
                 targetY = _currentSelection.Bottom - tbHeight - 10;
+                targetX = _currentSelection.Right - tbWidth - 10;
             }
-            
-            // Hard clamp to ensure it absolutely never overflows the monitor
-            targetX = Math.Max(screenRelX + 5, Math.Min(targetX, screenMaxX - tbWidth - 5));
-            targetY = Math.Max(screenRelY + 5, Math.Min(targetY, screenMaxY - tbHeight - 5));
+
+            // Global safety clamps
+            if (targetX < 0) targetX = 10;
+            if (targetY < 0) targetY = 10;
+            if (targetX + tbWidth > Width) targetX = Width - tbWidth - 10;
+            if (targetY + tbHeight > Height) targetY = Height - tbHeight - 10;
 
             Toolbar.Margin = new Thickness(targetX, targetY, 0, 0);
         }
@@ -698,17 +652,9 @@ namespace KaqiaApp
             Point p = e.GetPosition(this);
             double dx = p.X - _toolbarDragStart.X;
             double dy = p.Y - _toolbarDragStart.Y;
-            
-            Rect tbRect = new Rect(_toolbarStartMargin.Left + dx, _toolbarStartMargin.Top + dy, Toolbar.ActualWidth, Toolbar.ActualHeight);
-            Rect workArea = GetMonitorWorkArea(tbRect);
-            
-            double screenRelX = workArea.X;
-            double screenRelY = workArea.Y;
-            double screenMaxX = workArea.Right;
-            double screenMaxY = workArea.Bottom;
 
-            double newLeft = Math.Max(screenRelX, Math.Min(_toolbarStartMargin.Left + dx, screenMaxX - Toolbar.ActualWidth));
-            double newTop = Math.Max(screenRelY, Math.Min(_toolbarStartMargin.Top + dy, screenMaxY - Toolbar.ActualHeight));
+            double newLeft = Math.Max(0, Math.Min(_toolbarStartMargin.Left + dx, Width - Toolbar.ActualWidth));
+            double newTop = Math.Max(0, Math.Min(_toolbarStartMargin.Top + dy, Height - Toolbar.ActualHeight));
             Toolbar.Margin = new Thickness(newLeft, newTop, 0, 0);
         }
 
