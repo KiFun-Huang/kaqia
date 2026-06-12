@@ -754,11 +754,88 @@ namespace KaqiaApp
         }
 
         private void OnUploadStickerClick(object sender, RoutedEventArgs e) {
-            var ofd = new OpenFileDialog { Filter = "图片|*.png;*.jpg;*.jpeg;*.bmp" }; if (ofd.ShowDialog() == true) { StickerManager.AddSticker(ofd.FileName); LoadStickers(); }
+            var ofd = new OpenFileDialog { Filter = "图片|*.png;*.jpg;*.jpeg;*.bmp", Multiselect = true }; 
+            if (ofd.ShowDialog() == true) { 
+                foreach (string file in ofd.FileNames) {
+                    StickerManager.AddSticker(file); 
+                }
+                LoadStickers(); 
+            }
         }
 
-        private void OnDeleteStickerFromLibrary(object sender, RoutedEventArgs e) {
-            if (sender is Button b && b.Tag is StickerItem item) { StickerManager.DeleteSticker(item.FilePath); StickerLibrary.Remove(item); }
+        private void OnManageStickersClick(object sender, RoutedEventArgs e) {
+            _isStickerManageMode = true;
+            ManageStickersBtn.Visibility = Visibility.Collapsed;
+            UploadStickerBtn.Visibility = Visibility.Collapsed;
+            ManageStickerActionGrid.Visibility = Visibility.Visible;
+            ToggleStickerCheckboxes(Visibility.Visible);
+        }
+
+        private void OnFinishManageStickersClick(object sender, RoutedEventArgs e) {
+            _isStickerManageMode = false;
+            ManageStickersBtn.Visibility = Visibility.Visible;
+            UploadStickerBtn.Visibility = Visibility.Visible;
+            ManageStickerActionGrid.Visibility = Visibility.Collapsed;
+            foreach (var item in StickerLibrary) item.IsSelected = false;
+            ToggleStickerCheckboxes(Visibility.Collapsed);
+        }
+
+        private void OnDeleteSelectedStickersClick(object sender, RoutedEventArgs e) {
+            var toDelete = StickerLibrary.Where(x => x.IsSelected).ToList();
+            foreach (var item in toDelete) {
+                StickerManager.DeleteSticker(item.FilePath);
+                StickerLibrary.Remove(item);
+            }
+            OnFinishManageStickersClick(null!, null!);
+        }
+
+        private void OnStickerItemMouseDown(object sender, MouseButtonEventArgs e) {
+            if (sender is FrameworkElement fe && fe.Tag is StickerItem item) {
+                if (_isStickerManageMode) {
+                    item.IsSelected = !item.IsSelected;
+                    // Trigger a tiny layout update or re-bind to reflect checkbox state if needed, 
+                    // though TwoWay binding usually handles this if INotifyPropertyChanged is implemented.
+                    // For a quick force-update without INPC:
+                    StickerItemsControl.Items.Refresh();
+                } else {
+                    var bitmap = item.Image;
+                    double w = bitmap.Width;
+                    double h = bitmap.Height;
+
+                    if (w == 0 || h == 0) { w = 120; h = 120; }
+                    else {
+                        double maxDim = 200;
+                        double scale = Math.Min(maxDim / w, maxDim / h);
+                        if (scale < 1.0) { w *= scale; h *= scale; }
+                    }
+
+                    var img = new Image { Source = bitmap, Stretch = Stretch.Uniform };
+                    WrapObject(img, (_currentSelection.Width - w) / 2, (_currentSelection.Height - h) / 2, w, h); 
+                    StickerPickerPopup.IsOpen = false;
+                }
+            }
+        }
+
+        private void ToggleStickerCheckboxes(Visibility visibility) {
+            for (int i = 0; i < StickerItemsControl.Items.Count; i++) {
+                var container = StickerItemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                if (container != null) {
+                    var cb = FindVisualChild<CheckBox>(container);
+                    if (cb != null) cb.Visibility = visibility;
+                }
+            }
+        }
+
+        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++) {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child != null && child is T) return (T)child;
+                else {
+                    T? childOfChild = FindVisualChild<T>(child!);
+                    if (childOfChild != null) return childOfChild;
+                }
+            }
+            return null;
         }
 
         private void OnFinishClick(object sender, RoutedEventArgs e) {
