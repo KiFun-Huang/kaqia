@@ -1,6 +1,21 @@
+<p align="center">
+  <img src="logo.png" width="128" alt="Kaqia Logo">
+</p>
+
 # Kaqia (卡恰) - 截图与贴纸工具
 
 Kaqia 是一款专为 Windows 打造的轻量、高性能截图与自定义贴纸工具。它不仅能帮助你快速捕获屏幕，还能通过丰富的标注工具和个人贴纸让截图更具表现力。
+
+## 🚀 快速开始
+
+### 1. 下载使用 (推荐)
+你可以直接从 [GitHub Releases](https://github.com/KiFun-Huang/kaqia/releases) 页面下载最新的发布版本：
+- 下载 `Kaqia_v1.0.0_win-x64.zip`。
+- 解压后双击 `KaqiaApp.exe` 即可运行。
+- **无需安装**，绿色免安装版本，解压即用。
+
+### 2. 自行编译 (针对开发者)
+如果你希望根据源代码进行二次开发或自行编译，请参考下方的[编译说明](#编译与使用说明)。
 
 ## 核心特性
 
