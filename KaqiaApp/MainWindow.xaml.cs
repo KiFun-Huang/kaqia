@@ -79,7 +79,7 @@ namespace KaqiaApp
 
                 KeyDown += (s, e) => {
                     if (e.Key == Key.Escape) Close();
-                    if (e.Key == Key.Delete && _selectedObject != null) { ImageContainer.Children.Remove(_selectedObject); _selectedObject = null; ToolPropertyPopup.IsOpen = false; }
+                    if (e.Key == Key.Delete && _selectedObject != null) { ImageContainer.Children.Remove(_selectedObject); _selectedObject = null; ToolPropertyPopup.Visibility = Visibility.Collapsed; }
                 };
                 AnnotationCanvas.MouseDown += OnAnnotationCanvasMouseDown;
                 AnnotationCanvas.MouseMove += OnAnnotationCanvasMouseMove;
@@ -139,7 +139,9 @@ namespace KaqiaApp
         private void DeselectAll(bool closePopup = true) {
             foreach (var child in ImageContainer.Children) if (child is KaqiaObjectControl oc) oc.SetSelected(false);
             _selectedObject = null;
-            if (closePopup) ToolPropertyPopup.IsOpen = false;
+            if (closePopup) {
+                ToolPropertyPopup.Visibility = Visibility.Collapsed;
+            }
             UpdateCropGridVisibility();
         }
 
@@ -150,6 +152,12 @@ namespace KaqiaApp
         }
 
         private void OnMouseDown(object sender, MouseButtonEventArgs e) {
+            // Close popups if clicking outside
+            if (e.OriginalSource == MainCanvas || e.OriginalSource == BackgroundImg || e.OriginalSource == AnnotationCanvas) {
+                if (BeautifyPopup.Visibility == Visibility.Visible) BeautifyPopup.Visibility = Visibility.Collapsed;
+                if (StickerPickerPopup.Visibility == Visibility.Visible) StickerPickerPopup.Visibility = Visibility.Collapsed;
+                if (_currentMode == DrawingMode.Select && ToolPropertyPopup.Visibility == Visibility.Visible) ToolPropertyPopup.Visibility = Visibility.Collapsed;
+            }
             if (EditCanvas.Visibility == Visibility.Visible) {
                 if (e.OriginalSource == MainCanvas || e.OriginalSource == BackgroundImg) {
                     DeselectAll();
@@ -219,13 +227,12 @@ namespace KaqiaApp
                     DeselectAll();
                     ShowToolPropertyPopup(_currentMode);
                 } else {
-                    ToolPropertyPopup.IsOpen = false;
+                    ToolPropertyPopup.Visibility = Visibility.Collapsed;
                 }
             }
         }
 
         private void ShowToolPropertyPopup(DrawingMode mode, KaqiaObjectControl? target = null) {
-            ToolPropertyPopup.PlacementTarget = Toolbar;
             ToolPropertyTitle.Text = mode.ToString() + " 属性";
 
             bool isText = mode == DrawingMode.Text;
@@ -242,11 +249,12 @@ namespace KaqiaApp
                     ToolHexInput.Text = state.Color;
                 }
             }
-            ToolPropertyPopup.IsOpen = true;
+            ToolPropertyPopup.Visibility = Visibility.Visible;
+            UpdateToolbarPosition();
         }
         
         private void OnCloseToolPropertyClick(object sender, RoutedEventArgs e) {
-            ToolPropertyPopup.IsOpen = false;
+            ToolPropertyPopup.Visibility = Visibility.Collapsed;
         }
 
         private void OnToolParamChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
@@ -587,9 +595,9 @@ namespace KaqiaApp
             else if (content is TextBox) { content.HorizontalAlignment = HorizontalAlignment.Stretch; content.VerticalAlignment = VerticalAlignment.Stretch; }
 
             oc.ObjectContent.Content = content;
-            oc.DeleteRequested += (s, e) => { ImageContainer.Children.Remove(oc); if (_selectedObject == oc) _selectedObject = null; ToolPropertyPopup.IsOpen = false; };
+            oc.DeleteRequested += (s, e) => { ImageContainer.Children.Remove(oc); if (_selectedObject == oc) _selectedObject = null; ToolPropertyPopup.Visibility = Visibility.Collapsed; };
             oc.Selected += (s, e) => { 
-                if (_selectedObject == oc && ToolPropertyPopup.IsOpen) return;
+                if (_selectedObject == oc && ToolPropertyPopup.Visibility == Visibility.Visible) return;
 
                 // Optimized selection logic: deselect others but don't close popup yet to avoid flicker
                 foreach (var child in ImageContainer.Children) if (child is KaqiaObjectControl other) other.SetSelected(false);
@@ -621,7 +629,7 @@ namespace KaqiaApp
 
                 var img = new Image { Source = bitmap, Stretch = Stretch.Uniform };
                 WrapObject(img, (_currentSelection.Width - w) / 2, (_currentSelection.Height - h) / 2, w, h); 
-                StickerPickerPopup.IsOpen = false;
+                StickerPickerPopup.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -642,52 +650,84 @@ namespace KaqiaApp
             double tbWidth = Toolbar.ActualWidth > 0 ? Toolbar.ActualWidth : 460;
             double tbHeight = Toolbar.ActualHeight > 0 ? Toolbar.ActualHeight : 42;
 
+            double targetX, targetY;
+
             if (_toolbarManuallyMoved) {
                 // Ensure it stays within the overall virtual screen bounds
-                double curLeft = Math.Max(0, Math.Min(Toolbar.Margin.Left, Width - tbWidth));
-                double curTop = Math.Max(0, Math.Min(Toolbar.Margin.Top, Height - tbHeight));
-                Toolbar.Margin = new Thickness(curLeft, curTop, 0, 0);
-                return;
+                targetX = Math.Max(0, Math.Min(Canvas.GetLeft(Toolbar), Width - tbWidth));
+                targetY = Math.Max(0, Math.Min(Canvas.GetTop(Toolbar), Height - tbHeight));
+            } else {
+                double eb = CanvasLayer.Padding.Bottom + (ShadowCheck.IsChecked == true ? 35 : 0);
+                targetX = _currentSelection.Right - tbWidth;
+                targetY = _currentSelection.Bottom + 20 + eb;
+
+                // Simple heuristic: If the crop box is tall (> 600px) or placing it outside exceeds 
+                // the global virtual screen height, place the toolbar INSIDE the crop box.
+                if (_currentSelection.Height > 600 || targetY + tbHeight > Height) {
+                    targetY = _currentSelection.Bottom - tbHeight - 10;
+                    targetX = _currentSelection.Right - tbWidth - 15; // Shifted slightly more to the left
+                }
+
+                // Global safety clamps
+                if (targetX < 0) targetX = 10;
+                if (targetY < 0) targetY = 10;
+                if (targetX + tbWidth > Width) targetX = Width - tbWidth - 10;
+                if (targetY + tbHeight > Height) targetY = Height - tbHeight - 10;
             }
 
-            double eb = CanvasLayer.Padding.Bottom + (ShadowCheck.IsChecked == true ? 35 : 0);
-            double targetX = _currentSelection.Right - tbWidth;
-            double targetY = _currentSelection.Bottom + 20 + eb;
+            Canvas.SetLeft(Toolbar, targetX);
+            Canvas.SetTop(Toolbar, targetY);
 
-            // Simple heuristic: If the crop box is tall (> 600px) or placing it outside exceeds 
-            // the global virtual screen height, place the toolbar INSIDE the crop box.
-            if (_currentSelection.Height > 600 || targetY + tbHeight > Height) {
-                targetY = _currentSelection.Bottom - tbHeight - 10;
-                targetX = _currentSelection.Right - tbWidth - 15; // Shifted slightly more to the left
+            // Position all popups relative to toolbar
+            PositionPopup(BeautifyPopup, targetX, targetY, tbWidth, tbHeight);
+            PositionPopup(ToolPropertyPopup, targetX, targetY, tbWidth, tbHeight);
+            PositionPopup(StickerPickerPopup, targetX, targetY, tbWidth, tbHeight);
+        }
+
+        private void PositionPopup(FrameworkElement popup, double tx, double ty, double tw, double th) {
+            if (popup.Visibility != Visibility.Visible) return;
+
+            popup.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Size size = popup.DesiredSize;
+
+            double px = tx + (tw - size.Width) / 2;
+            double py = ty - size.Height - 8;
+
+            // Clamp X
+            if (px < 0) px = 0;
+            if (px + size.Width > Width) px = Width - size.Width;
+
+            // Clamp Y
+            if (py < 10) {
+                py = ty + th + 8; // Place below toolbar if too high
             }
+            if (py + size.Height > Height) py = Height - size.Height;
 
-            // Global safety clamps
-            if (targetX < 0) targetX = 10;
-            if (targetY < 0) targetY = 10;
-            if (targetX + tbWidth > Width) targetX = Width - tbWidth - 10;
-            if (targetY + tbHeight > Height) targetY = Height - tbHeight - 10;
-
-            Toolbar.Margin = new Thickness(targetX, targetY, 0, 0);
+            Canvas.SetLeft(popup, px);
+            Canvas.SetTop(popup, py);
         }
 
         private void OnToolbarMouseDown(object sender, MouseButtonEventArgs e) {
             _isDraggingToolbar = true;
             _toolbarManuallyMoved = true;
-            _toolbarDragStart = e.GetPosition(this);
-            _toolbarStartMargin = Toolbar.Margin;
+            _toolbarDragStart = e.GetPosition(ControlCanvas);
+            _toolbarStartMargin = new Thickness(Canvas.GetLeft(Toolbar), Canvas.GetTop(Toolbar), 0, 0);
             Toolbar.CaptureMouse();
             e.Handled = true;
         }
 
         private void OnToolbarMouseMove(object sender, MouseEventArgs e) {
             if (!_isDraggingToolbar) return;
-            Point p = e.GetPosition(this);
+            Point p = e.GetPosition(ControlCanvas);
             double dx = p.X - _toolbarDragStart.X;
             double dy = p.Y - _toolbarDragStart.Y;
 
             double newLeft = Math.Max(0, Math.Min(_toolbarStartMargin.Left + dx, Width - Toolbar.ActualWidth));
             double newTop = Math.Max(0, Math.Min(_toolbarStartMargin.Top + dy, Height - Toolbar.ActualHeight));
-            Toolbar.Margin = new Thickness(newLeft, newTop, 0, 0);
+            
+            Canvas.SetLeft(Toolbar, newLeft);
+            Canvas.SetTop(Toolbar, newTop);
+            UpdateToolbarPosition(); // Reposition popups
         }
 
         private void OnToolbarMouseUp(object sender, MouseButtonEventArgs e) {
@@ -697,8 +737,21 @@ namespace KaqiaApp
             }
         }
 
-        private void OnBeautifyToggle(object sender, RoutedEventArgs e) => BeautifyPopup.IsOpen = !BeautifyPopup.IsOpen;
-        private void OnStickerPickerToggle(object sender, RoutedEventArgs e) => StickerPickerPopup.IsOpen = !StickerPickerPopup.IsOpen;
+        private void OnBeautifyToggle(object sender, RoutedEventArgs e) {
+            BeautifyPopup.Visibility = BeautifyPopup.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            if (BeautifyPopup.Visibility == Visibility.Visible) {
+                StickerPickerPopup.Visibility = Visibility.Collapsed;
+                UpdateToolbarPosition();
+            }
+        }
+
+        private void OnStickerPickerToggle(object sender, RoutedEventArgs e) {
+            StickerPickerPopup.Visibility = StickerPickerPopup.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            if (StickerPickerPopup.Visibility == Visibility.Visible) {
+                BeautifyPopup.Visibility = Visibility.Collapsed;
+                UpdateToolbarPosition();
+            }
+        }
         private void OnBeautifyParamChanged(object sender, RoutedEventArgs e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnRadiusChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
         private void OnStrokeChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { UpdateBeautifyEffects(); SaveCurrentConfig(); }
@@ -811,7 +864,7 @@ namespace KaqiaApp
 
                     var img = new Image { Source = bitmap, Stretch = Stretch.Uniform };
                     WrapObject(img, (_currentSelection.Width - w) / 2, (_currentSelection.Height - h) / 2, w, h); 
-                    StickerPickerPopup.IsOpen = false;
+                    StickerPickerPopup.Visibility = Visibility.Collapsed;
                 }
             }
         }

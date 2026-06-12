@@ -132,32 +132,33 @@
             </Canvas>
         </Canvas>
 
-        <!-- TOOLBAR -->
-        <Border x:Name="Toolbar" Visibility="Collapsed" Background="#F22C2C2C" Height="42" VerticalAlignment="Top" HorizontalAlignment="Left" Panel.ZIndex="9999" CornerRadius="6" MouseLeftButtonDown="OnToolbarMouseDown" MouseMove="OnToolbarMouseMove" MouseLeftButtonUp="OnToolbarMouseUp">
-            <StackPanel Orientation="Horizontal">
-                <Border Width="16" Background="Transparent" Cursor="SizeAll" ToolTip="拖动工具栏">
-                    <TextBlock Text="⋮" Foreground="#666" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Margin="2,0,0,2"/>
-                </Border>
-                <StackPanel Orientation="Horizontal" Margin="0,0,5,0">
-                    <RadioButton x:Name="SelectToolBtn" Content="↖" Style="{StaticResource ToolButton}" IsChecked="True" Tag="Select" Click="OnToolSelected" ToolTip="选择 (S)"/>
-                    <RadioButton Content="□" Style="{StaticResource ToolButton}" Tag="Rectangle" Click="OnToolSelected" ToolTip="矩形 (R)"/>
-                    <RadioButton Content="◯" Style="{StaticResource ToolButton}" Tag="Ellipse" Click="OnToolSelected" ToolTip="椭圆 (E)"/>
-                    <RadioButton Content="➔" Style="{StaticResource ToolButton}" Tag="Arrow" Click="OnToolSelected" ToolTip="箭头 (A)"/>
-                    <RadioButton Content="✎" Style="{StaticResource ToolButton}" Tag="Pen" Click="OnToolSelected" ToolTip="画笔 (P)"/>
-                    <RadioButton Content="T" Style="{StaticResource ToolButton}" Tag="Text" Click="OnToolSelected" ToolTip="文字 (T)"/>
+        <!-- CONTROL LAYER (Canvas based for manual positioning) -->
+        <Canvas x:Name="ControlCanvas" Background="{x:Null}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <!-- TOOLBAR -->
+            <Border x:Name="Toolbar" Visibility="Collapsed" Background="#F22C2C2C" Height="42" Panel.ZIndex="9999" CornerRadius="6" MouseLeftButtonDown="OnToolbarMouseDown" MouseMove="OnToolbarMouseMove" MouseLeftButtonUp="OnToolbarMouseUp">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="16" Background="Transparent" Cursor="SizeAll" ToolTip="拖动工具栏">
+                        <TextBlock Text="⋮" Foreground="#666" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Margin="2,0,0,2"/>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,5,0">
+                        <RadioButton x:Name="SelectToolBtn" Content="↖" Style="{StaticResource ToolButton}" IsChecked="True" Tag="Select" Click="OnToolSelected" ToolTip="选择 (S)"/>
+                        <RadioButton Content="□" Style="{StaticResource ToolButton}" Tag="Rectangle" Click="OnToolSelected" ToolTip="矩形 (R)"/>
+                        <RadioButton Content="◯" Style="{StaticResource ToolButton}" Tag="Ellipse" Click="OnToolSelected" ToolTip="椭圆 (E)"/>
+                        <RadioButton Content="➔" Style="{StaticResource ToolButton}" Tag="Arrow" Click="OnToolSelected" ToolTip="箭头 (A)"/>
+                        <RadioButton Content="✎" Style="{StaticResource ToolButton}" Tag="Pen" Click="OnToolSelected" ToolTip="画笔 (P)"/>
+                        <RadioButton Content="T" Style="{StaticResource ToolButton}" Tag="Text" Click="OnToolSelected" ToolTip="文字 (T)"/>
+                    </StackPanel>
+                    <Separator Width="1" Background="#444" Margin="5,8"/>
+                    <Button Content="外观" Click="OnBeautifyToggle" Style="{StaticResource ToolbarButton}"/>
+                    <Button Content="贴纸" Click="OnStickerPickerToggle" Style="{StaticResource ToolbarButton}"/>
+                    <Separator Width="1" Background="#444" Margin="5,8"/>
+                    <Button Content="完成" Click="OnFinishClick" Style="{StaticResource ToolbarButton}" Background="#00C853" FontWeight="Bold" Margin="5,4" Width="60" Padding="0"/>
+                    <Button Content="取消" Click="OnCancelClick" Style="{StaticResource ToolbarButton}" Background="Transparent" Foreground="#AAA" Margin="2,4,8,4" Width="60" Padding="0"/>
                 </StackPanel>
-                <Separator Width="1" Background="#444" Margin="5,8"/>
-                <Button Content="外观" Click="OnBeautifyToggle" Style="{StaticResource ToolbarButton}"/>
-                <Button Content="贴纸" Click="OnStickerPickerToggle" Style="{StaticResource ToolbarButton}"/>
-                <Separator Width="1" Background="#444" Margin="5,8"/>
-                <Button Content="完成" Click="OnFinishClick" Style="{StaticResource ToolbarButton}" Background="#00C853" FontWeight="Bold" Margin="5,4" Width="60" Padding="0"/>
-                <Button Content="取消" Click="OnCancelClick" Style="{StaticResource ToolbarButton}" Background="Transparent" Foreground="#AAA" Margin="2,4,8,4" Width="60" Padding="0"/>
-            </StackPanel>
-        </Border>
+            </Border>
 
-        <!-- BEAUTIFY POPUP -->
-        <Popup x:Name="BeautifyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
-            <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="340">
+            <!-- BEAUTIFY POPUP -->
+            <Border x:Name="BeautifyPopup" Visibility="Collapsed" Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="340">
                 <StackPanel>
                     <TextBlock Text="外观美化" Foreground="White" FontWeight="Bold" Margin="0,0,0,12"/>
                     <Grid Margin="0,3">
@@ -229,12 +230,10 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
-        </Popup>
 
-                    <!-- TOOL PROPERTY POPUP -->
-                    <Popup x:Name="ToolPropertyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="True" VerticalOffset="-10">
-                    <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="280">
-                    <StackPanel>
+            <!-- TOOL PROPERTY POPUP -->
+            <Border x:Name="ToolPropertyPopup" Visibility="Collapsed" Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="15" Width="280">
+                <StackPanel>
                     <Grid Margin="0,0,0,12">
                         <TextBlock x:Name="ToolPropertyTitle" Text="工具选项" Foreground="White" FontWeight="Bold"/>
                         <Button Content="×" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,-5,-5,0" Click="OnCloseToolPropertyClick" Background="Transparent" Foreground="#AAA" BorderThickness="0" FontSize="16" Cursor="Hand">
@@ -292,14 +291,11 @@
                         </Border>
                         <TextBox Grid.Column="1" x:Name="ToolHexInput" Text="#F44336" FontSize="10" Padding="5,2" VerticalAlignment="Center" KeyDown="OnToolHexKeyDown" Margin="5,0,15,0"/>
                     </Grid>
-                    </StackPanel>
-                    </Border>
-                    </Popup>
+                </StackPanel>
+            </Border>
 
-
-        <!-- STICKER POPUP -->
-        <Popup x:Name="StickerPickerPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">
-            <Border Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="10" Width="280">
+            <!-- STICKER POPUP -->
+            <Border x:Name="StickerPickerPopup" Visibility="Collapsed" Background="#1E1E1E" BorderBrush="#333" BorderThickness="1" CornerRadius="8" Padding="10" Width="280">
                 <StackPanel>
                     <Grid Margin="2,0,0,10">
                         <TextBlock Text="我的贴纸" Foreground="White" FontWeight="Bold" VerticalAlignment="Center"/>
@@ -334,6 +330,6 @@
                     </Grid>
                 </StackPanel>
             </Border>
-        </Popup>
+        </Canvas>
     </Grid>
 </Window>
