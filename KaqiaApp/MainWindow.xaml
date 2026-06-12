@@ -58,7 +58,29 @@
 
         <Canvas x:Name="MainCanvas" Background="Transparent" MouseDown="OnMouseDown" MouseMove="OnMouseMove" MouseUp="OnMouseUp">
             <Rectangle x:Name="SelectionBorder" Stroke="#00A2FF" StrokeThickness="1" Visibility="Collapsed" />
+            
+            <Border x:Name="InfoOverlay" Visibility="Collapsed" Background="#D8000000" CornerRadius="4" Padding="6,4" Panel.ZIndex="10000">
+                <StackPanel Orientation="Horizontal" TextBlock.Foreground="White" TextBlock.FontSize="12">
+                    <TextBlock x:Name="InfoPosText" Visibility="Collapsed" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <StackPanel x:Name="InfoSizePanel" Orientation="Horizontal" Visibility="Collapsed">
+                        <TextBox x:Name="InfoWidthInput" Text="100" Background="Transparent" Foreground="White" BorderThickness="0" TextAlignment="Center" MinWidth="30" GotFocus="OnInfoSizeGotFocus" LostFocus="OnInfoSizeLostFocus" KeyDown="OnInfoSizeKeyDown"/>
+                        <TextBlock Text=" × " VerticalAlignment="Center" Foreground="#AAA"/>
+                        <TextBox x:Name="InfoHeightInput" Text="100" Background="Transparent" Foreground="White" BorderThickness="0" TextAlignment="Center" MinWidth="30" GotFocus="OnInfoSizeGotFocus" LostFocus="OnInfoSizeLostFocus" KeyDown="OnInfoSizeKeyDown"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <Canvas x:Name="EditCanvas" Visibility="Collapsed">
+                <Grid x:Name="CropResizeGrid" Visibility="Collapsed" Panel.ZIndex="100">
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="SizeNWSE" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="TopLeft" Margin="-5,-5,0,0"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Center" VerticalAlignment="Top" Cursor="SizeNS" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="Top" Margin="0,-5,0,0"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Top" Cursor="SizeNESW" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="TopRight" Margin="0,-5,-5,0"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Left" VerticalAlignment="Center" Cursor="SizeWE" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="Left" Margin="-5,0,0,0"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="SizeWE" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="Right" Margin="0,0,-5,0"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Left" VerticalAlignment="Bottom" Cursor="SizeNESW" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="BottomLeft" Margin="-5,0,0,-5"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Center" VerticalAlignment="Bottom" Cursor="SizeNS" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="Bottom" Margin="0,0,0,-5"/>
+                    <Rectangle Width="10" Height="10" Fill="White" Stroke="#00A2FF" StrokeThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" MouseDown="OnCropHandleMouseDown" MouseMove="OnCropHandleMouseMove" MouseUp="OnCropHandleMouseUp" Tag="BottomRight" Margin="0,0,-5,-5"/>
+                </Grid>
                 <Border x:Name="ShadowLayer" Background="Transparent">
                     <Border x:Name="CanvasLayer" Background="Transparent" Padding="0">
                         <Grid x:Name="LayeredContainer">
@@ -83,23 +105,31 @@
         </Canvas>
 
         <!-- TOOLBAR -->
-        <StackPanel x:Name="Toolbar" Orientation="Horizontal" Visibility="Collapsed"
-                    Background="#2C2C2C" Height="42" VerticalAlignment="Top" HorizontalAlignment="Left" Panel.ZIndex="9999">
-            <StackPanel Orientation="Horizontal" Margin="5,0">
-                <RadioButton x:Name="SelectToolBtn" Content="↖" Style="{StaticResource ToolButton}" IsChecked="True" Tag="Select" Checked="OnToolSelected" ToolTip="选择 (S)"/>
-                <RadioButton Content="□" Style="{StaticResource ToolButton}" Tag="Rectangle" Checked="OnToolSelected" ToolTip="矩形 (R)"/>
-                <RadioButton Content="◯" Style="{StaticResource ToolButton}" Tag="Ellipse" Checked="OnToolSelected" ToolTip="椭圆 (E)"/>
-                <RadioButton Content="➔" Style="{StaticResource ToolButton}" Tag="Arrow" Checked="OnToolSelected" ToolTip="箭头 (A)"/>
-                <RadioButton Content="✎" Style="{StaticResource ToolButton}" Tag="Pen" Checked="OnToolSelected" ToolTip="画笔 (P)"/>
-                <RadioButton Content="T" Style="{StaticResource ToolButton}" Tag="Text" Checked="OnToolSelected" ToolTip="文字 (T)"/>
+        <Border x:Name="Toolbar" Visibility="Collapsed" Background="#2C2C2C" Height="42" VerticalAlignment="Top" HorizontalAlignment="Left" Panel.ZIndex="9999" CornerRadius="6" MouseLeftButtonDown="OnToolbarMouseDown" MouseMove="OnToolbarMouseMove" MouseLeftButtonUp="OnToolbarMouseUp">
+            <StackPanel Orientation="Horizontal">
+                <Border Width="16" Background="Transparent" Cursor="SizeAll" ToolTip="拖动工具栏">
+                    <TextBlock Text="⋮" Foreground="#666" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Margin="2,0,0,2"/>
+                </Border>
+                <StackPanel Orientation="Horizontal" Margin="0,0,5,0">
+                    <RadioButton x:Name="SelectToolBtn" Content="↖" Style="{StaticResource ToolButton}" IsChecked="True" Tag="Select" Checked="OnToolSelected" ToolTip="选择 (S)"/>
+                    <RadioButton Content="□" Style="{StaticResource ToolButton}" Tag="Rectangle" Checked="OnToolSelected" ToolTip="矩形 (R)"/>
+                    <RadioButton Content="◯" Style="{StaticResource ToolButton}" Tag="Ellipse" Checked="OnToolSelected" ToolTip="椭圆 (E)"/>
+                    <RadioButton Content="➔" Style="{StaticResource ToolButton}" Tag="Arrow" Checked="OnToolSelected" ToolTip="箭头 (A)"/>
+                    <RadioButton Content="✎" Style="{StaticResource ToolButton}" Tag="Pen" Checked="OnToolSelected" ToolTip="画笔 (P)"/>
+                    <RadioButton Content="T" Style="{StaticResource ToolButton}" Tag="Text" Checked="OnToolSelected" ToolTip="文字 (T)"/>
+                </StackPanel>
+                <Separator Width="1" Background="#444" Margin="5,8"/>
+                <Button Content="外观" Click="OnBeautifyToggle" Background="#3A3A3A" Foreground="White" Margin="2,4" Padding="8,0" BorderThickness="0"/>
+                <Button Content="贴纸" Click="OnStickerPickerToggle" Background="#3A3A3A" Foreground="White" Margin="2,4" Padding="8,0" BorderThickness="0"/>
+                <Separator Width="1" Background="#444" Margin="5,8"/>
+                <Button Content="完成" Click="OnFinishClick" Background="#00C853" Foreground="White" FontWeight="Bold" Margin="5,4" Padding="15,0" BorderThickness="0">
+                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                </Button>
+                <Button Content="取消" Click="OnCancelClick" Background="#3A3A3A" Foreground="White" Margin="5,4,8,4" Padding="12,0" BorderThickness="0">
+                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                </Button>
             </StackPanel>
-            <Separator Width="1" Background="#444" Margin="5,8"/>
-            <Button Content="外观" Click="OnBeautifyToggle" Background="#3A3A3A" Foreground="White" Margin="2,4" Padding="8,0" BorderThickness="0"/>
-            <Button Content="贴纸" Click="OnStickerPickerToggle" Background="#3A3A3A" Foreground="White" Margin="2,4" Padding="8,0" BorderThickness="0"/>
-            <Separator Width="1" Background="#444" Margin="5,8"/>
-            <Button Content="完成" Click="OnFinishClick" Background="#00C853" Foreground="White" FontWeight="Bold" Margin="5,4" Padding="15,0" BorderThickness="0"/>
-            <Button Content="取消" Click="OnCancelClick" Background="#3A3A3A" Foreground="White" Margin="5,4" Padding="12,0" BorderThickness="0"/>
-        </StackPanel>
+        </Border>
 
         <!-- BEAUTIFY POPUP -->
         <Popup x:Name="BeautifyPopup" PlacementTarget="{Binding ElementName=Toolbar}" Placement="Top" AllowsTransparency="True" StaysOpen="False" VerticalOffset="-10">

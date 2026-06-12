@@ -32,7 +32,21 @@ namespace KaqiaApp
         private DrawingMode _currentMode = DrawingMode.Select;
         private Shape? _activeShape;
         private Polyline? _activePolyline;
+
+        // Crop state variables
+        private bool _isDraggingCrop = false;
+        private bool _isResizingCrop = false;
+        private string _cropResizeEdge = "";
+        private Point _cropDragStart;
+        private Rect _initialCropSelection;
+        private bool _infoInputFocused = false;
         
+        // Toolbar Drag State
+        private bool _isDraggingToolbar = false;
+        private Point _toolbarDragStart;
+        private Thickness _toolbarStartMargin;
+        private bool _toolbarManuallyMoved = false;
+
         public class StickerItem { public string FilePath { get; set; } = ""; public BitmapImage Image { get; set; } = new BitmapImage(); }
         public ObservableCollection<StickerItem> StickerLibrary { get; set; } = new ObservableCollection<StickerItem>();
 
@@ -120,38 +134,73 @@ namespace KaqiaApp
             foreach (var child in ImageContainer.Children) if (child is KaqiaObjectControl oc) oc.SetSelected(false);
             _selectedObject = null;
             if (closePopup) ToolPropertyPopup.IsOpen = false;
+            UpdateCropGridVisibility();
+        }
+
+        private void UpdateCropGridVisibility() {
+            if (CropResizeGrid != null) {
+                CropResizeGrid.Visibility = (_currentMode == DrawingMode.Select && _selectedObject == null) ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
 
         private void OnMouseDown(object sender, MouseButtonEventArgs e) {
             if (EditCanvas.Visibility == Visibility.Visible) {
-                if (e.OriginalSource == MainCanvas || e.OriginalSource == BackgroundImg) DeselectAll();
+                if (e.OriginalSource == MainCanvas || e.OriginalSource == BackgroundImg) {
+                    DeselectAll();
+                }
                 return;
             }
-            _isSelecting = true; _startPoint = e.GetPosition(MainCanvas); SelectionBorder.Visibility = Visibility.Visible;
+            _isSelecting = true; 
+            _startPoint = e.GetPosition(MainCanvas); 
+            SelectionBorder.Visibility = Visibility.Visible;
+            InfoOverlay.Visibility = Visibility.Visible;
+            InfoPosText.Visibility = Visibility.Visible;
+            InfoSizePanel.Visibility = Visibility.Collapsed;
         }
 
         private void OnMouseMove(object sender, MouseEventArgs e) {
             if (!_isSelecting) return;
-            _currentSelection = new Rect(_startPoint, e.GetPosition(MainCanvas));
-            Canvas.SetLeft(SelectionBorder, _currentSelection.Left); Canvas.SetTop(SelectionBorder, _currentSelection.Top);
-            SelectionBorder.Width = _currentSelection.Width; SelectionBorder.Height = _currentSelection.Height; SelectionRect.Rect = _currentSelection;
+            Point p = e.GetPosition(MainCanvas);
+            double left = Math.Min(_startPoint.X, p.X);
+            double top = Math.Min(_startPoint.Y, p.Y);
+            double width = Math.Max(1, Math.Abs(p.X - _startPoint.X));
+            double height = Math.Max(1, Math.Abs(p.Y - _startPoint.Y));
+            
+            _currentSelection = new Rect(left, top, width, height);
+            Canvas.SetLeft(SelectionBorder, left); 
+            Canvas.SetTop(SelectionBorder, top);
+            SelectionBorder.Width = width; 
+            SelectionBorder.Height = height; 
+            SelectionRect.Rect = _currentSelection;
+
+            InfoPosText.Text = $"X: {Math.Round(p.X)}  Y: {Math.Round(p.Y)}";
+            UpdateInfoOverlay();
         }
 
         private void OnMouseUp(object sender, MouseButtonEventArgs e) {
-            if (!_isSelecting) return; _isSelecting = false;
-            if (_currentSelection.Width > 10 && _currentSelection.Height > 10) EnterEditMode();
+            if (!_isSelecting) return; 
+            _isSelecting = false;
+            
+            if (_currentSelection.Width > 10 && _currentSelection.Height > 10) {
+                InfoPosText.Visibility = Visibility.Collapsed;
+                InfoSizePanel.Visibility = Visibility.Visible;
+                InfoWidthInput.Text = Math.Round(_currentSelection.Width).ToString();
+                InfoHeightInput.Text = Math.Round(_currentSelection.Height).ToString();
+                EnterEditMode();
+            } else {
+                SelectionBorder.Visibility = Visibility.Collapsed;
+                InfoOverlay.Visibility = Visibility.Collapsed;
+                SelectionRect.Rect = new Rect(0, 0, 0, 0);
+            }
         }
 
         private void EnterEditMode() {
-            SelectionBorder.Visibility = Visibility.Collapsed; SelectionRect.Rect = _currentSelection;
-            try {
-                var croppedBitmap = new CroppedBitmap(_fullScreenshot, new Int32Rect((int)(_currentSelection.X * _scaleX), (int)(_currentSelection.Y * _scaleY), (int)(_currentSelection.Width * _scaleX), (int)(_currentSelection.Height * _scaleY)));
-                CroppedImage.Source = croppedBitmap; CroppedImage.Source = croppedBitmap; CroppedImage.Width = _currentSelection.Width; CroppedImage.Height = _currentSelection.Height;
-                ImageContainer.Width = _currentSelection.Width; ImageContainer.Height = _currentSelection.Height;
-                AnnotationCanvas.Width = _currentSelection.Width; AnnotationCanvas.Height = _currentSelection.Height;
-                Canvas.SetLeft(EditCanvas, _currentSelection.Left); Canvas.SetTop(EditCanvas, _currentSelection.Top);
-                EditCanvas.Visibility = Visibility.Visible; Toolbar.Visibility = Visibility.Visible; UpdateBeautifyEffects();
-            } catch (Exception ex) { MessageBox.Show("预览失败: " + ex.Message); Close(); }
+            SelectionBorder.Visibility = Visibility.Collapsed;
+            CropResizeGrid.Visibility = Visibility.Visible;
+            EditCanvas.Visibility = Visibility.Visible; 
+            Toolbar.Visibility = Visibility.Visible; 
+            UpdateCropRegion(_currentSelection);
+            UpdateBeautifyEffects();
         }
 
         // --- TOOL PROPERTY LOGIC ---
@@ -246,6 +295,121 @@ namespace KaqiaApp
             }
         }
 
+        // --- CROP RESIZE & DRAG LOGIC ---
+
+        private void UpdateInfoOverlay() {
+            if (_currentSelection.Width <= 0 || _currentSelection.Height <= 0) return;
+            InfoOverlay.Visibility = Visibility.Visible;
+            double left = _currentSelection.Left;
+            double top = _currentSelection.Top - 30;
+            if (top < 0) top = _currentSelection.Top + 5;
+            Canvas.SetLeft(InfoOverlay, left);
+            Canvas.SetTop(InfoOverlay, top);
+        }
+
+        private void UpdateCropRegion(Rect newRect) {
+            newRect.X = Math.Max(0, Math.Min(newRect.X, Width - 20));
+            newRect.Y = Math.Max(0, Math.Min(newRect.Y, Height - 20));
+            newRect.Width = Math.Max(20, Math.Min(newRect.Width, Width - newRect.X));
+            newRect.Height = Math.Max(20, Math.Min(newRect.Height, Height - newRect.Y));
+
+            double dx = newRect.X - _currentSelection.X;
+            double dy = newRect.Y - _currentSelection.Y;
+
+            _currentSelection = newRect;
+            SelectionRect.Rect = _currentSelection;
+
+            try {
+                var croppedBitmap = new CroppedBitmap(_fullScreenshot, new Int32Rect((int)(_currentSelection.X * _scaleX), (int)(_currentSelection.Y * _scaleY), (int)(_currentSelection.Width * _scaleX), (int)(_currentSelection.Height * _scaleY)));
+                CroppedImage.Source = croppedBitmap;
+                CroppedImage.Width = _currentSelection.Width; 
+                CroppedImage.Height = _currentSelection.Height;
+                
+                ImageContainer.Width = _currentSelection.Width; 
+                ImageContainer.Height = _currentSelection.Height;
+                AnnotationCanvas.Width = _currentSelection.Width; 
+                AnnotationCanvas.Height = _currentSelection.Height;
+                CropResizeGrid.Width = _currentSelection.Width;
+                CropResizeGrid.Height = _currentSelection.Height;
+                
+                Canvas.SetLeft(EditCanvas, _currentSelection.Left); 
+                Canvas.SetTop(EditCanvas, _currentSelection.Top);
+
+                foreach (UIElement child in ImageContainer.Children) {
+                    if (child is KaqiaObjectControl || child is Shape || child is Polyline) {
+                        Canvas.SetLeft(child, Canvas.GetLeft(child) - dx);
+                        Canvas.SetTop(child, Canvas.GetTop(child) - dy);
+                    }
+                }
+
+                UpdateToolbarPosition();
+                UpdateInfoOverlay();
+
+                if (InfoSizePanel.Visibility == Visibility.Visible && !_infoInputFocused) {
+                    InfoWidthInput.Text = Math.Round(_currentSelection.Width).ToString();
+                    InfoHeightInput.Text = Math.Round(_currentSelection.Height).ToString();
+                }
+            } catch { }
+        }
+
+        private void OnInfoSizeGotFocus(object sender, RoutedEventArgs e) => _infoInputFocused = true;
+        private void OnInfoSizeLostFocus(object sender, RoutedEventArgs e) { _infoInputFocused = false; ApplyManualCropSize(); }
+        private void OnInfoSizeKeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) { Keyboard.ClearFocus(); ApplyManualCropSize(); } }
+
+        private void ApplyManualCropSize() {
+            if (double.TryParse(InfoWidthInput.Text, out double w) && double.TryParse(InfoHeightInput.Text, out double h)) {
+                Rect newRect = _currentSelection;
+                newRect.Width = Math.Max(20, Math.Min(w, Width - newRect.X));
+                newRect.Height = Math.Max(20, Math.Min(h, Height - newRect.Y));
+                UpdateCropRegion(newRect);
+            }
+        }
+
+        private void OnCropHandleMouseDown(object sender, MouseButtonEventArgs e) {
+            if (sender is FrameworkElement fe) {
+                _isResizingCrop = true;
+                _cropResizeEdge = fe.Tag.ToString() ?? "";
+                _cropDragStart = e.GetPosition(MainCanvas);
+                _initialCropSelection = _currentSelection;
+                fe.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void OnCropHandleMouseMove(object sender, MouseEventArgs e) {
+            if (!_isResizingCrop) return;
+            Point p = e.GetPosition(MainCanvas);
+            double dx = p.X - _cropDragStart.X;
+            double dy = p.Y - _cropDragStart.Y;
+            Rect newRect = _initialCropSelection;
+            
+            switch (_cropResizeEdge) {
+                case "TopLeft": newRect.X += dx; newRect.Width -= dx; newRect.Y += dy; newRect.Height -= dy; break;
+                case "Top": newRect.Y += dy; newRect.Height -= dy; break;
+                case "TopRight": newRect.Width += dx; newRect.Y += dy; newRect.Height -= dy; break;
+                case "Left": newRect.X += dx; newRect.Width -= dx; break;
+                case "Right": newRect.Width += dx; break;
+                case "BottomLeft": newRect.X += dx; newRect.Width -= dx; newRect.Height += dy; break;
+                case "Bottom": newRect.Height += dy; break;
+                case "BottomRight": newRect.Width += dx; newRect.Height += dy; break;
+            }
+            
+            if (newRect.Width < 20) { newRect.X = _currentSelection.X; newRect.Width = 20; }
+            if (newRect.Height < 20) { newRect.Y = _currentSelection.Y; newRect.Height = 20; }
+            UpdateCropRegion(newRect);
+        }
+        
+        private void OnCropHandleMouseUp(object sender, MouseButtonEventArgs e) {
+            if (_isResizingCrop && sender is FrameworkElement fe) {
+                _isResizingCrop = false;
+                fe.ReleaseMouseCapture();
+                if (!_infoInputFocused) {
+                    InfoWidthInput.Text = Math.Round(_currentSelection.Width).ToString();
+                    InfoHeightInput.Text = Math.Round(_currentSelection.Height).ToString();
+                }
+            }
+        }
+
         // --- DRAWING LOGIC ---
 
         private void OnAnnotationCanvasMouseDown(object sender, MouseButtonEventArgs e) {
@@ -253,7 +417,13 @@ namespace KaqiaApp
                 DeselectAll(); 
                 Keyboard.ClearFocus();
                 AnnotationCanvas.Focus();
-                if (_currentMode == DrawingMode.Select) return;
+                if (_currentMode == DrawingMode.Select) {
+                    _isDraggingCrop = true;
+                    _cropDragStart = e.GetPosition(MainCanvas);
+                    _initialCropSelection = _currentSelection;
+                    AnnotationCanvas.CaptureMouse();
+                    return;
+                }
             } else return;
 
             Point p = e.GetPosition(AnnotationCanvas); _startPoint = p;
@@ -272,6 +442,17 @@ namespace KaqiaApp
         }
 
         private void OnAnnotationCanvasMouseMove(object sender, MouseEventArgs e) {
+            if (_isDraggingCrop) {
+                Point p2 = e.GetPosition(MainCanvas);
+                double dx = p2.X - _cropDragStart.X;
+                double dy = p2.Y - _cropDragStart.Y;
+                Rect newRect = _initialCropSelection;
+                newRect.X += dx;
+                newRect.Y += dy;
+                UpdateCropRegion(newRect);
+                return;
+            }
+
             if (_activeShape == null && _activePolyline == null) return;
             Point p = e.GetPosition(AnnotationCanvas);
             if (_activeShape != null) {
@@ -285,6 +466,12 @@ namespace KaqiaApp
         }
 
         private void OnAnnotationCanvasMouseUp(object sender, MouseButtonEventArgs e) {
+            if (_isDraggingCrop) {
+                _isDraggingCrop = false;
+                AnnotationCanvas.ReleaseMouseCapture();
+                return;
+            }
+
             if (_activeShape != null || _activePolyline != null) {
                 FrameworkElement? content = (FrameworkElement?)_activeShape ?? _activePolyline;
                 if (content != null) {
@@ -409,6 +596,50 @@ namespace KaqiaApp
 
         // --- BEAUTIFY LOGIC ---
 
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromRect(ref RECT lprc, uint dwFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        public struct RECT {
+            public int left; public int top; public int right; public int bottom;
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        public struct MONITORINFO {
+            public uint cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        private Rect GetMonitorWorkArea(Rect selection) {
+            int globalX = (int)(selection.X + SystemParameters.VirtualScreenLeft);
+            int globalY = (int)(selection.Y + SystemParameters.VirtualScreenTop);
+            RECT r = new RECT { 
+                left = globalX, 
+                top = globalY, 
+                right = globalX + Math.Max(1, (int)selection.Width), 
+                bottom = globalY + Math.Max(1, (int)selection.Height) 
+            };
+            
+            IntPtr hMonitor = MonitorFromRect(ref r, 2 /* MONITOR_DEFAULTTONEAREST */);
+            if (hMonitor != IntPtr.Zero) {
+                MONITORINFO info = new MONITORINFO();
+                info.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(MONITORINFO));
+                if (GetMonitorInfo(hMonitor, ref info)) {
+                    return new Rect(
+                        info.rcWork.left - SystemParameters.VirtualScreenLeft, 
+                        info.rcWork.top - SystemParameters.VirtualScreenTop, 
+                        info.rcWork.right - info.rcWork.left, 
+                        info.rcWork.bottom - info.rcWork.top);
+                }
+            }
+            return new Rect(0, 0, Width, Height); // fallback to full window bounds
+        }
+
         private void UpdateBeautifyEffects() {
             if (!_isInitialized || EditCanvas.Visibility != Visibility.Visible) return;
             StrokeLayer.CornerRadius = new CornerRadius(RadiusSlider.Value); StrokeLayer.BorderThickness = new Thickness(StrokeSlider.Value);
@@ -419,8 +650,73 @@ namespace KaqiaApp
 
         private void UpdateToolbarPosition() {
             if (!_isInitialized) return;
+
+            double tbWidth = Toolbar.ActualWidth > 0 ? Toolbar.ActualWidth : 420;
+            double tbHeight = Toolbar.ActualHeight > 0 ? Toolbar.ActualHeight : 42;
+
+            Rect workArea = GetMonitorWorkArea(_currentSelection);
+            
+            double screenRelX = workArea.X;
+            double screenRelY = workArea.Y;
+            double screenMaxX = workArea.Right;
+            double screenMaxY = workArea.Bottom;
+
+            if (_toolbarManuallyMoved) {
+                double curLeft = Math.Max(screenRelX, Math.Min(Toolbar.Margin.Left, screenMaxX - tbWidth));
+                double curTop = Math.Max(screenRelY, Math.Min(Toolbar.Margin.Top, screenMaxY - tbHeight));
+                Toolbar.Margin = new Thickness(curLeft, curTop, 0, 0);
+                return;
+            }
+
             double eb = CanvasLayer.Padding.Bottom + (ShadowCheck.IsChecked == true ? 35 : 0);
-            Toolbar.Margin = new Thickness(_currentSelection.Left + Math.Max(0, _currentSelection.Width - 420), _currentSelection.Bottom + 20 + eb, 0, 0);
+            double targetX = _currentSelection.Right - tbWidth;
+            double targetY = _currentSelection.Bottom + 20 + eb;
+
+            // Constrain vertically within the current monitor's working area
+            if (targetY + tbHeight > screenMaxY) {
+                targetY = _currentSelection.Bottom - tbHeight - 10;
+            }
+            
+            // Hard clamp to ensure it absolutely never overflows the monitor
+            targetX = Math.Max(screenRelX + 5, Math.Min(targetX, screenMaxX - tbWidth - 5));
+            targetY = Math.Max(screenRelY + 5, Math.Min(targetY, screenMaxY - tbHeight - 5));
+
+            Toolbar.Margin = new Thickness(targetX, targetY, 0, 0);
+        }
+
+        private void OnToolbarMouseDown(object sender, MouseButtonEventArgs e) {
+            _isDraggingToolbar = true;
+            _toolbarManuallyMoved = true;
+            _toolbarDragStart = e.GetPosition(this);
+            _toolbarStartMargin = Toolbar.Margin;
+            Toolbar.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void OnToolbarMouseMove(object sender, MouseEventArgs e) {
+            if (!_isDraggingToolbar) return;
+            Point p = e.GetPosition(this);
+            double dx = p.X - _toolbarDragStart.X;
+            double dy = p.Y - _toolbarDragStart.Y;
+            
+            Rect tbRect = new Rect(_toolbarStartMargin.Left + dx, _toolbarStartMargin.Top + dy, Toolbar.ActualWidth, Toolbar.ActualHeight);
+            Rect workArea = GetMonitorWorkArea(tbRect);
+            
+            double screenRelX = workArea.X;
+            double screenRelY = workArea.Y;
+            double screenMaxX = workArea.Right;
+            double screenMaxY = workArea.Bottom;
+
+            double newLeft = Math.Max(screenRelX, Math.Min(_toolbarStartMargin.Left + dx, screenMaxX - Toolbar.ActualWidth));
+            double newTop = Math.Max(screenRelY, Math.Min(_toolbarStartMargin.Top + dy, screenMaxY - Toolbar.ActualHeight));
+            Toolbar.Margin = new Thickness(newLeft, newTop, 0, 0);
+        }
+
+        private void OnToolbarMouseUp(object sender, MouseButtonEventArgs e) {
+            if (_isDraggingToolbar) {
+                _isDraggingToolbar = false;
+                Toolbar.ReleaseMouseCapture();
+            }
         }
 
         private void OnBeautifyToggle(object sender, RoutedEventArgs e) => BeautifyPopup.IsOpen = !BeautifyPopup.IsOpen;
