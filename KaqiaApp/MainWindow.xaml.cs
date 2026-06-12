@@ -27,6 +27,7 @@ namespace KaqiaApp
         private KaqiaObjectControl? _selectedObject;
         private AppConfig _config;
         private bool _isInitialized = false;
+        private bool _isApplyingConfig = false;
 
         private DrawingMode _currentMode = DrawingMode.Select;
         private Shape? _activeShape;
@@ -72,6 +73,8 @@ namespace KaqiaApp
         private void ApplyConfigToUI()
         {
             if (!_isInitialized) return;
+            _isApplyingConfig = true; // Lock saving during initialization
+
             RadiusSlider.Value = _config.Radius;
             StrokeSlider.Value = _config.StrokeThickness;
             PaddingSlider.Value = _config.Padding;
@@ -87,11 +90,13 @@ namespace KaqiaApp
                 }
             } catch { }
             UpdateBeautifyEffects();
+            
+            _isApplyingConfig = false; // Unlock saving
         }
 
         private void SaveCurrentConfig()
         {
-            if (!_isInitialized || _config == null) return;
+            if (!_isInitialized || _config == null || _isApplyingConfig) return;
             _config.Radius = RadiusSlider.Value;
             _config.StrokeThickness = StrokeSlider.Value;
             _config.Padding = PaddingSlider.Value;
