@@ -619,6 +619,13 @@ namespace KaqiaApp
                 foreach (var child in ImageContainer.Children) if (child is KaqiaObjectControl other) other.SetSelected(false);
 
                 oc.SetSelected(true); _selectedObject = oc; 
+
+                // Do not show property popup for images (stickers)
+                if (content is Image) {
+                    ToolPropertyPopup.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
                 DrawingMode mode = DrawingMode.Rectangle; 
                 if (content is System.Windows.Shapes.Path) mode = DrawingMode.Arrow;
                 else if (content is Polyline) mode = DrawingMode.Pen;
