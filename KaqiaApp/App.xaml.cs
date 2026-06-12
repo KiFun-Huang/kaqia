@@ -63,6 +63,10 @@ namespace KaqiaApp
             _hwndSource.AddHook(HwndHook);
 
             RegisterGlobalHotkey();
+
+            // Show Splash Screen on startup to give visual feedback
+            var splash = new SplashWindow();
+            splash.Show();
         }
 
         private void ShowFatalError(Exception? ex)
