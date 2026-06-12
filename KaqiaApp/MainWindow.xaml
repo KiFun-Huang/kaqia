@@ -305,25 +305,25 @@
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="6">
-                                    <Border Width="54" Height="54" BorderBrush="#444" BorderThickness="1" CornerRadius="4" Background="#2C2C2C" Cursor="Hand" MouseDown="OnStickerItemMouseDown" Tag="{Binding}">
-                                        <Image Source="{Binding Image}" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <Grid Margin="6" Cursor="Hand" MouseDown="OnStickerItemMouseDown" MouseMove="OnStickerItemMouseMove" MouseUp="OnStickerItemMouseUp" Drop="OnStickerItemDrop" AllowDrop="True" Tag="{Binding}">
+                                    <Border Width="54" Height="54" BorderBrush="#444" BorderThickness="1" CornerRadius="4" Background="#2C2C2C">
+                                        <Image Source="{Binding Image}" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality" IsHitTestVisible="False" />
                                     </Border>
-                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" Tag="ManageCheckBox" />
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Visibility="{Binding IsManageMode, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" Tag="ManageCheckBox" IsHitTestVisible="False" />
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <Grid Margin="0,12,0,0">
-                        <Button x:Name="UploadStickerBtn" Content="+ 批量上传贴纸" Background="#00A2FF" Foreground="White" Padding="0,10" Click="OnUploadStickerClick" BorderThickness="0" Cursor="Hand">
-                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
-                        </Button>
                         <Grid x:Name="ManageStickerActionGrid" Visibility="Collapsed">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <Button Content="删除选中" Background="#FF4444" Foreground="White" Margin="0,0,5,0" Padding="0,10" Click="OnDeleteSelectedStickersClick" BorderThickness="0" Cursor="Hand">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Button Content="上传" Background="#00A2FF" Foreground="White" Margin="0,0,5,0" Padding="0,10" Click="OnUploadStickerClick" BorderThickness="0" Cursor="Hand">
                                 <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
                             </Button>
-                            <Button Grid.Column="1" Content="完成管理" Background="#444" Foreground="White" Margin="5,0,0,0" Padding="0,10" Click="OnFinishManageStickersClick" BorderThickness="0" Cursor="Hand">
+                            <Button Grid.Column="1" Content="删除选中" Background="#FF4444" Foreground="White" Margin="5,0,5,0" Padding="0,10" Click="OnDeleteSelectedStickersClick" BorderThickness="0" Cursor="Hand">
+                                <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                            </Button>
+                            <Button Grid.Column="2" Content="完成" Background="#444" Foreground="White" Margin="5,0,0,0" Padding="0,10" Click="OnFinishManageStickersClick" BorderThickness="0" Cursor="Hand">
                                 <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
                             </Button>
                         </Grid>

@@ -23,7 +23,6 @@
     <UserControl.RenderTransform>
         <TransformGroup>
             <RotateTransform x:Name="ObjectRotate" />
-            <TranslateTransform x:Name="ObjectTranslate" />
         </TransformGroup>
     </UserControl.RenderTransform>
     
@@ -51,7 +50,7 @@
             <Rectangle Grid.RowSpan="3" Grid.ColumnSpan="3" Stroke="#00A2FF" StrokeDashArray="3 3" StrokeThickness="2" IsHitTestVisible="False"/>
             
             <!-- Move Handles (Outer frame for dragging, center is hollow to allow click-through) -->
-            <Grid Grid.RowSpan="3" Grid.ColumnSpan="3" Cursor="SizeAll" MouseDown="OnContentMouseDown" Background="{x:Null}">
+            <Grid Grid.RowSpan="3" Grid.ColumnSpan="3" Cursor="SizeAll" MouseDown="OnContentMouseDown" Background="Transparent">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="*"/>
@@ -63,10 +62,10 @@
                     <ColumnDefinition Width="10"/>
                 </Grid.ColumnDefinitions>
                 <!-- Outer areas capture hits for dragging. -->
-                <Rectangle Grid.Row="0" Grid.ColumnSpan="3" Fill="Transparent"/>
-                <Rectangle Grid.Row="2" Grid.ColumnSpan="3" Fill="Transparent"/>
-                <Rectangle Grid.Row="1" Grid.Column="0" Fill="Transparent"/>
-                <Rectangle Grid.Row="1" Grid.Column="2" Fill="Transparent"/>
+                <Rectangle Grid.Row="0" Grid.ColumnSpan="3" Fill="Transparent" IsHitTestVisible="False"/>
+                <Rectangle Grid.Row="2" Grid.ColumnSpan="3" Fill="Transparent" IsHitTestVisible="False"/>
+                <Rectangle Grid.Row="1" Grid.Column="0" Fill="Transparent" IsHitTestVisible="False"/>
+                <Rectangle Grid.Row="1" Grid.Column="2" Fill="Transparent" IsHitTestVisible="False"/>
             </Grid>
             
             <!-- Edges (Specific smaller areas for resizing, centered on each side) -->

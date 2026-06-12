@@ -146,8 +146,13 @@ namespace KaqiaApp
 
             if (_isDragging)
             {
-                ObjectTranslate.X += delta.X;
-                ObjectTranslate.Y += delta.Y;
+                double left = Canvas.GetLeft(this);
+                double top = Canvas.GetTop(this);
+                if (double.IsNaN(left)) left = 0;
+                if (double.IsNaN(top)) top = 0;
+
+                Canvas.SetLeft(this, left + delta.X);
+                Canvas.SetTop(this, top + delta.Y);
                 _lastMousePosition = currentPosition;
             }
             else if (_isResizing)
@@ -171,6 +176,11 @@ namespace KaqiaApp
             bool isProportional = ObjectContent.Content is Image;
             double aspectRatio = currentWidth / currentHeight;
 
+            double left = Canvas.GetLeft(this);
+            double top = Canvas.GetTop(this);
+            if (double.IsNaN(left)) left = 0;
+            if (double.IsNaN(top)) top = 0;
+
             switch (_resizeEdge)
             {
                 case "Right":
@@ -178,7 +188,7 @@ namespace KaqiaApp
                     break;
                 case "Left":
                     double newWidthL = Math.Max(10, currentWidth - delta.X);
-                    if (newWidthL > 10) ObjectTranslate.X += delta.X;
+                    if (newWidthL > 10) Canvas.SetLeft(this, left + delta.X);
                     this.Width = newWidthL;
                     break;
                 case "Bottom":
@@ -186,7 +196,7 @@ namespace KaqiaApp
                     break;
                 case "Top":
                     double newHeightT = Math.Max(10, currentHeight - delta.Y);
-                    if (newHeightT > 10) ObjectTranslate.Y += delta.Y;
+                    if (newHeightT > 10) Canvas.SetTop(this, top + delta.Y);
                     this.Height = newHeightT;
                     break;
                 case "BottomRight":
@@ -208,8 +218,8 @@ namespace KaqiaApp
                         double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 - delta.X / currentWidth));
                         double nw = currentWidth * scale;
                         double nh = currentHeight * scale;
-                        ObjectTranslate.X -= (nw - currentWidth);
-                        ObjectTranslate.Y -= (nh - currentHeight);
+                        Canvas.SetLeft(this, left - (nw - currentWidth));
+                        Canvas.SetTop(this, top - (nh - currentHeight));
                         this.Width = nw;
                         this.Height = nh;
                     }
@@ -217,8 +227,8 @@ namespace KaqiaApp
                     {
                         double newWidthTL = Math.Max(10, currentWidth - delta.X);
                         double newHeightTL = Math.Max(10, currentHeight - delta.Y);
-                        if (newWidthTL > 10) ObjectTranslate.X += delta.X;
-                        if (newHeightTL > 10) ObjectTranslate.Y += delta.Y;
+                        if (newWidthTL > 10) Canvas.SetLeft(this, left + delta.X);
+                        if (newHeightTL > 10) Canvas.SetTop(this, top + delta.Y);
                         this.Width = newWidthTL;
                         this.Height = newHeightTL;
                     }
@@ -229,7 +239,7 @@ namespace KaqiaApp
                         double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 + delta.X / currentWidth));
                         double nw = currentWidth * scale;
                         double nh = currentHeight * scale;
-                        ObjectTranslate.Y -= (nh - currentHeight);
+                        Canvas.SetTop(this, top - (nh - currentHeight));
                         this.Width = nw;
                         this.Height = nh;
                     }
@@ -237,7 +247,7 @@ namespace KaqiaApp
                     {
                         this.Width = Math.Max(10, currentWidth + delta.X);
                         double newHeightTR = Math.Max(10, currentHeight - delta.Y);
-                        if (newHeightTR > 10) ObjectTranslate.Y += delta.Y;
+                        if (newHeightTR > 10) Canvas.SetTop(this, top + delta.Y);
                         this.Height = newHeightTR;
                     }
                     break;
@@ -247,14 +257,14 @@ namespace KaqiaApp
                         double scale = Math.Max(10 / currentWidth, Math.Max(10 / currentHeight, 1 - delta.X / currentWidth));
                         double nw = currentWidth * scale;
                         double nh = currentHeight * scale;
-                        ObjectTranslate.X -= (nw - currentWidth);
+                        Canvas.SetLeft(this, left - (nw - currentWidth));
                         this.Width = nw;
                         this.Height = nh;
                     }
                     else
                     {
                         double newWidthBL = Math.Max(10, currentWidth - delta.X);
-                        if (newWidthBL > 10) ObjectTranslate.X += delta.X;
+                        if (newWidthBL > 10) Canvas.SetLeft(this, left + delta.X);
                         this.Width = newWidthBL;
                         this.Height = Math.Max(10, currentHeight + delta.Y);
                     }

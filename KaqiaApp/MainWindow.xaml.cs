@@ -47,14 +47,30 @@ namespace KaqiaApp
         private Thickness _toolbarStartMargin;
         private bool _toolbarManuallyMoved = false;
 
-        public class StickerItem { 
+        public class StickerItem : System.ComponentModel.INotifyPropertyChanged { 
             public string FilePath { get; set; } = ""; 
             public BitmapImage Image { get; set; } = new BitmapImage(); 
-            public bool IsSelected { get; set; } = false;
+            
+            private bool _isSelected = false;
+            public bool IsSelected {
+                get => _isSelected;
+                set { _isSelected = value; OnPropertyChanged(nameof(IsSelected)); }
+            }
+
+            private bool _isManageMode = false;
+            public bool IsManageMode {
+                get => _isManageMode;
+                set { _isManageMode = value; OnPropertyChanged(nameof(IsManageMode)); }
+            }
+
+            public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+            protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
         }
         public ObservableCollection<StickerItem> StickerLibrary { get; set; } = new ObservableCollection<StickerItem>();
 
         private bool _isStickerManageMode = false;
+        private Point _stickerDragStart;
+        private StickerItem? _draggedSticker;
 
         public MainWindow(BitmapSource screenshot, int pixelWidth, int pixelHeight)
         {
@@ -819,18 +835,18 @@ namespace KaqiaApp
         private void OnManageStickersClick(object sender, RoutedEventArgs e) {
             _isStickerManageMode = true;
             ManageStickersBtn.Visibility = Visibility.Collapsed;
-            UploadStickerBtn.Visibility = Visibility.Collapsed;
             ManageStickerActionGrid.Visibility = Visibility.Visible;
-            ToggleStickerCheckboxes(Visibility.Visible);
+            foreach (var item in StickerLibrary) item.IsManageMode = true;
         }
 
         private void OnFinishManageStickersClick(object sender, RoutedEventArgs e) {
             _isStickerManageMode = false;
             ManageStickersBtn.Visibility = Visibility.Visible;
-            UploadStickerBtn.Visibility = Visibility.Visible;
             ManageStickerActionGrid.Visibility = Visibility.Collapsed;
-            foreach (var item in StickerLibrary) item.IsSelected = false;
-            ToggleStickerCheckboxes(Visibility.Collapsed);
+            foreach (var item in StickerLibrary) {
+                item.IsSelected = false;
+                item.IsManageMode = false;
+            }
         }
 
         private void OnDeleteSelectedStickersClick(object sender, RoutedEventArgs e) {
@@ -844,12 +860,11 @@ namespace KaqiaApp
 
         private void OnStickerItemMouseDown(object sender, MouseButtonEventArgs e) {
             if (sender is FrameworkElement fe && fe.Tag is StickerItem item) {
+                _stickerDragStart = e.GetPosition(this);
+                _draggedSticker = item;
+                
                 if (_isStickerManageMode) {
-                    item.IsSelected = !item.IsSelected;
-                    // Trigger a tiny layout update or re-bind to reflect checkbox state if needed, 
-                    // though TwoWay binding usually handles this if INotifyPropertyChanged is implemented.
-                    // For a quick force-update without INPC:
-                    StickerItemsControl.Items.Refresh();
+                    // Start drag drop for reordering
                 } else {
                     var bitmap = item.Image;
                     double w = bitmap.Width;
@@ -869,26 +884,35 @@ namespace KaqiaApp
             }
         }
 
-        private void ToggleStickerCheckboxes(Visibility visibility) {
-            for (int i = 0; i < StickerItemsControl.Items.Count; i++) {
-                var container = StickerItemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
-                if (container != null) {
-                    var cb = FindVisualChild<CheckBox>(container);
-                    if (cb != null) cb.Visibility = visibility;
+        private void OnStickerItemMouseMove(object sender, MouseEventArgs e) {
+            if (e.LeftButton == MouseButtonState.Pressed && _isStickerManageMode && _draggedSticker != null) {
+                Point currentPos = e.GetPosition(this);
+                if (Math.Abs(currentPos.X - _stickerDragStart.X) > 5 || Math.Abs(currentPos.Y - _stickerDragStart.Y) > 5) {
+                    DragDrop.DoDragDrop((DependencyObject)sender, _draggedSticker, DragDropEffects.Move);
+                    _draggedSticker = null;
                 }
             }
         }
 
-        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++) {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child != null && child is T) return (T)child;
-                else {
-                    T? childOfChild = FindVisualChild<T>(child!);
-                    if (childOfChild != null) return childOfChild;
+        private void OnStickerItemMouseUp(object sender, MouseButtonEventArgs e) {
+            if (_draggedSticker != null && _isStickerManageMode) {
+                _draggedSticker.IsSelected = !_draggedSticker.IsSelected;
+            }
+            _draggedSticker = null;
+        }
+
+        private void OnStickerItemDrop(object sender, DragEventArgs e) {
+            if (sender is FrameworkElement fe && fe.Tag is StickerItem targetItem) {
+                var droppedData = e.Data.GetData(typeof(StickerItem)) as StickerItem;
+                if (droppedData != null && droppedData != targetItem) {
+                    int oldIndex = StickerLibrary.IndexOf(droppedData);
+                    int newIndex = StickerLibrary.IndexOf(targetItem);
+                    if (oldIndex != -1 && newIndex != -1) {
+                        StickerLibrary.Move(oldIndex, newIndex);
+                        // Optional: Persist order logic here if needed
+                    }
                 }
             }
-            return null;
         }
 
         private void OnFinishClick(object sender, RoutedEventArgs e) {
