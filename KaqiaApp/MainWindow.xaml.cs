@@ -474,10 +474,13 @@ namespace KaqiaApp
 
             if (_activeShape != null || _activePolyline != null) {
                 FrameworkElement? content = (FrameworkElement?)_activeShape ?? _activePolyline;
+                bool isClickOnly = false;
+
                 if (content != null) {
                     double x, y, w, h;
                     if (content is System.Windows.Shapes.Path path) {
                         Rect bounds = path.Data.Bounds;
+                        isClickOnly = bounds.Width < 5 && bounds.Height < 5;
                         x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
                         // Store the original points to allow re-drawing
                         if (path.Tag is Point[] pts) {
@@ -485,13 +488,25 @@ namespace KaqiaApp
                         }
                     } else if (content is Polyline pl) {
                         Rect bounds = GetPolylineBounds(pl);
+                        isClickOnly = bounds.Width < 5 && bounds.Height < 5;
                         x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
                         for(int i=0; i<pl.Points.Count; i++) pl.Points[i] = new Point(pl.Points[i].X - x, pl.Points[i].Y - y);
-                    } else { x = Canvas.GetLeft(content); y = Canvas.GetTop(content); w = content.Width; h = content.Height; }
-                    AnnotationCanvas.Children.Remove(content); WrapObject(content, x, y, w, h);
+                    } else { 
+                        x = Canvas.GetLeft(content); y = Canvas.GetTop(content); w = content.Width; h = content.Height; 
+                        isClickOnly = double.IsNaN(x) || double.IsNaN(y) || double.IsNaN(w) || double.IsNaN(h) || (w < 5 && h < 5);
+                    }
+                    
+                    AnnotationCanvas.Children.Remove(content); 
+                    if (!isClickOnly) {
+                        WrapObject(content, x, y, w, h);
+                    }
                 }
+                
                 _activeShape = null; _activePolyline = null; AnnotationCanvas.ReleaseMouseCapture();
-                SelectToolBtn.IsChecked = true; _currentMode = DrawingMode.Select;
+                
+                if (!isClickOnly) {
+                    SelectToolBtn.IsChecked = true; _currentMode = DrawingMode.Select;
+                }
             }
         }
 
@@ -607,7 +622,8 @@ namespace KaqiaApp
         private void UpdateToolbarPosition() {
             if (!_isInitialized) return;
 
-            double tbWidth = Toolbar.ActualWidth > 0 ? Toolbar.ActualWidth : 420;
+            Toolbar.UpdateLayout(); // Force layout to get accurate width
+            double tbWidth = Toolbar.ActualWidth > 0 ? Toolbar.ActualWidth : 460;
             double tbHeight = Toolbar.ActualHeight > 0 ? Toolbar.ActualHeight : 42;
 
             if (_toolbarManuallyMoved) {
@@ -626,7 +642,7 @@ namespace KaqiaApp
             // the global virtual screen height, place the toolbar INSIDE the crop box.
             if (_currentSelection.Height > 600 || targetY + tbHeight > Height) {
                 targetY = _currentSelection.Bottom - tbHeight - 10;
-                targetX = _currentSelection.Right - tbWidth - 10;
+                targetX = _currentSelection.Right - tbWidth - 15; // Shifted slightly more to the left
             }
 
             // Global safety clamps
