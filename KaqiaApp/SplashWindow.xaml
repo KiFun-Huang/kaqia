@@ -9,7 +9,7 @@
             <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.6"/>
         </Border.Effect>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <Image Source="pack://application:,,,/cat_logo.png" Width="64" Height="64" RenderOptions.BitmapScalingMode="HighQuality"/>
+            <Image Source="pack://application:,,,/logo.png" Width="64" Height="64" RenderOptions.BitmapScalingMode="HighQuality"/>
             <TextBlock Text="Kaqia 咔嚓" Foreground="White" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,15,0,8"/>
             <TextBlock x:Name="StatusText" Text="已在后台静默运行" Foreground="#AAA" FontSize="12" HorizontalAlignment="Center"/>
         </StackPanel>
