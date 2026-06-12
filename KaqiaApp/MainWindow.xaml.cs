@@ -477,20 +477,26 @@ namespace KaqiaApp
                 bool isClickOnly = false;
 
                 if (content != null) {
-                    double x, y, w, h;
+                    double x = 0, y = 0, w = 10, h = 10;
+                    
                     if (content is System.Windows.Shapes.Path path) {
-                        Rect bounds = path.Data.Bounds;
-                        isClickOnly = bounds.Width < 5 && bounds.Height < 5;
-                        x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
-                        // Store the original points to allow re-drawing
-                        if (path.Tag is Point[] pts) {
-                            path.Stretch = Stretch.Fill;
+                        if (path.Data == null || path.Data.Bounds.IsEmpty) {
+                            isClickOnly = true;
+                        } else {
+                            Rect bounds = path.Data.Bounds;
+                            isClickOnly = bounds.Width < 5 && bounds.Height < 5;
+                            x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
+                            if (path.Tag is Point[] pts) path.Stretch = Stretch.Fill;
                         }
                     } else if (content is Polyline pl) {
-                        Rect bounds = GetPolylineBounds(pl);
-                        isClickOnly = bounds.Width < 5 && bounds.Height < 5;
-                        x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
-                        for(int i=0; i<pl.Points.Count; i++) pl.Points[i] = new Point(pl.Points[i].X - x, pl.Points[i].Y - y);
+                        if (pl.Points == null || pl.Points.Count < 2) {
+                            isClickOnly = true;
+                        } else {
+                            Rect bounds = GetPolylineBounds(pl);
+                            isClickOnly = bounds.Width < 5 && bounds.Height < 5;
+                            x = bounds.Left; y = bounds.Top; w = Math.Max(10, bounds.Width); h = Math.Max(10, bounds.Height);
+                            for(int i=0; i<pl.Points.Count; i++) pl.Points[i] = new Point(pl.Points[i].X - x, pl.Points[i].Y - y);
+                        }
                     } else { 
                         x = Canvas.GetLeft(content); y = Canvas.GetTop(content); w = content.Width; h = content.Height; 
                         isClickOnly = double.IsNaN(x) || double.IsNaN(y) || double.IsNaN(w) || double.IsNaN(h) || (w < 5 && h < 5);
