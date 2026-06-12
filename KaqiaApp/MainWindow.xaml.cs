@@ -47,8 +47,14 @@ namespace KaqiaApp
         private Thickness _toolbarStartMargin;
         private bool _toolbarManuallyMoved = false;
 
-        public class StickerItem { public string FilePath { get; set; } = ""; public BitmapImage Image { get; set; } = new BitmapImage(); }
+        public class StickerItem { 
+            public string FilePath { get; set; } = ""; 
+            public BitmapImage Image { get; set; } = new BitmapImage(); 
+            public bool IsSelected { get; set; } = false;
+        }
         public ObservableCollection<StickerItem> StickerLibrary { get; set; } = new ObservableCollection<StickerItem>();
+
+        private bool _isStickerManageMode = false;
 
         public MainWindow(BitmapSource screenshot, int pixelWidth, int pixelHeight)
         {
@@ -237,6 +243,10 @@ namespace KaqiaApp
                 }
             }
             ToolPropertyPopup.IsOpen = true;
+        }
+        
+        private void OnCloseToolPropertyClick(object sender, RoutedEventArgs e) {
+            ToolPropertyPopup.IsOpen = false;
         }
 
         private void OnToolParamChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
